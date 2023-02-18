@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "zkps-from-scratch"
+version = "0.1.0"
+description = "Building zero knowledge proofs from scratch"
+authors = ["Andrew Lu"]
+readme = "README.md"
+packages = [{include = "zkps_from_scratch"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+py-ecc = "^6.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
