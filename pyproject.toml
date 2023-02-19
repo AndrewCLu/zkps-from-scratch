@@ -9,6 +9,8 @@ packages = [{include = "zkps_from_scratch"}]
 [tool.poetry.dependencies]
 python = "^3.8"
 py-ecc = "^6.0.0"
+pytest = "^7.2.1"
+mypy = "^1.0.1"
 
 
 [build-system]
