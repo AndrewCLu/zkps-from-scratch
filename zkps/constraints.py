@@ -16,4 +16,22 @@ class PlonkConstraints(Generic[FElt]):
     qC: List[FElt]
 
     def is_valid_constraint(self) -> bool:
-        NotImplemented
+        # All lists must have length n
+        if len(self.a) != self.n or \
+            len(self.b) != self.n or \
+            len(self.c) != self.n or \
+            len(self.qL) != self.n or \
+            len(self.qR) != self.n or \
+            len(self.qO) != self.n or \
+            len(self.qM) != self.n or \
+            len(self.qC) != self.n:
+            return False
+        
+        # All values in wire constraints must lie between 1 and m
+        for i in range(self.n):
+            if self.a[i].n == 0 or self.a[i].n > self.m or \
+                self.b[i].n == 0 or self.b[i].n > self.m or \
+                self.c[i].n == 0 or self.c[i].n > self.m:
+                return False
+        
+        return True
