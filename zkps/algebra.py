@@ -81,10 +81,20 @@ class Polynomial(Generic[FElt]):
 
         res = Polynomial[FElt]([field_class.zero()])
         for i in range(len(domain)):
-            lagrange = Polynomial[FElt]([field_class.one()])
-            for j in range(len(domain)):
-                if i != j:
-                    lagrange *= Polynomial[FElt]([-domain[j], field_class.one()]) / (domain[i] - domain[j])
+            lagrange = Polynomial.lagrange_poly(domain=domain, index=i, field_class=field_class)
             res += Polynomial[FElt]([values[i]]) * lagrange
         
         return res
+
+    @staticmethod
+    def lagrange_poly(domain: List[FElt], index: int, field_class: Type[FElt]) -> 'Polynomial':
+        if index >= len(domain):
+            raise Exception("Index must be within the bounds of the domain!")
+
+        res = Polynomial[FElt]([field_class.one()])
+        for i in range(len(domain)):
+            if i != index:
+                res *= Polynomial[FElt]([-domain[i], field_class.one()]) / (domain[index] - domain[i])
+        
+        return res
+        
