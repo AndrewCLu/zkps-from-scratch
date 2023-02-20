@@ -12,7 +12,7 @@ class TrivialCommitment(Commitment, Generic[FElt]):
     def to_bytes(self) -> bytes:
         res = bytearray()
         for i in range(len(self.value)):
-            res.extend(self.value[i].to_bytes)
+            res.extend(self.value[i].to_bytes())
         
         return bytes(res)
 
