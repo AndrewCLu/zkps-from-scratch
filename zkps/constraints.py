@@ -35,3 +35,19 @@ class PlonkConstraints(Generic[FElt]):
                 return False
         
         return True
+
+    def get_permutation(self) -> List[int]:
+        wiring_constraints = [self.a, self.b, self.c]
+        wire_sets: List[List[int]] = [[]] * self.m
+        for j in range(3):
+            for i in range(self.n):
+                value = wiring_constraints[j][i].n
+                index = j * self.n + i
+                wire_sets[value].append(index)
+
+        res = [0] * (3 * self.n)
+        for wire_set in wire_sets: 
+            for i in range(len(wire_set)):
+                res[wire_set[i]] = wire_set[(i + 1) % len(wire_set)]
+        
+        return res

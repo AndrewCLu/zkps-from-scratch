@@ -20,7 +20,7 @@ class PlonkPreprocessedInput(Generic[FElt]):
 class Preprocessor(Generic[FElt]):
     @staticmethod
     def preprocess_plonk_constraints(constraints: PlonkConstraints, mult_subgroup: List[FElt], field_class: Type[FElt]) -> 'PlonkPreprocessedInput':
-        permutation = Preprocessor.get_permutation_from_constraints(constraints)
+        permutation = constraints.get_permutation()
         s_id_polys = []
         s_sigma_polys = []
         for j in range(3): # Follow index notation from paper
@@ -53,21 +53,4 @@ class Preprocessor(Generic[FElt]):
             S2=s_sigma_polys[1],
             S3=s_sigma_polys[2]
         )
-
-    @staticmethod
-    def get_permutation_from_constraints(constraints: PlonkConstraints) -> List[int]:
-        wiring_constraints = [constraints.a, constraints.b, constraints.c]
-        wire_sets: List[List[int]] = [[]] * constraints.m
-        for j in range(3):
-            for i in range(constraints.n):
-                value = wiring_constraints[j][i].n
-                index = j * constraints.n + i
-                wire_sets[value].append(index)
-
-        res = [0] * (3 * constraints.n)
-        for wire_set in wire_sets: 
-            for i in range(len(wire_set)):
-                res[wire_set[i]] = wire_set[(i + 1) % len(wire_set)]
-        
-        return res
 
