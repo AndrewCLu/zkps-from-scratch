@@ -36,6 +36,7 @@ class PlonkProver(Generic[FElt]):
         abc_constraints = [self.constraints.a, self.constraints.b, self.constraints.c]
         f_LRO_values: List[List[FElt]] = []
         f_polys: List[Polynomial[FElt]] = []
+        f_cms: List[Commitment] = []
         for j in range(3):
             f_values = []
             for i in range(self.constraints.n):
@@ -44,6 +45,7 @@ class PlonkProver(Generic[FElt]):
             f_poly = Polynomial.interpolate_poly(domain=mult_subgroup, values=f_values, field_class=self.field_class)
             f_polys.append(f_poly)
             f_cm = self.pcs_prover.commit(f_poly)
+            f_cms.append(f_cm)
             
             transcript.append(f_cm.to_bytes())
 
@@ -116,10 +118,32 @@ class PlonkProver(Generic[FElt]):
         T_cm = self.pcs_prover.commit(T_poly)
 
         transcript.append(T_cm.to_bytes())
-            
+        eval_chal = transcript.get_hash()
 
-            
-            
+        eval_f_L = f_polys[0](eval_chal)
+        eval_f_R = f_polys[1](eval_chal)
+        eval_f_O = f_polys[2](eval_chal)
+        eval_z = z_poly(eval_chal)
+        eval_z_prime = z_prime_poly(eval_chal)
+
+        transcript.append(eval_f_L.to_bytes())
+        transcript.append(eval_f_R.to_bytes())
+        transcript.append(eval_f_O.to_bytes())
+        transcript.append(eval_z.to_bytes())
+        transcript.append(eval_z_prime.to_bytes())
+
+        pcs_chal = transcript.get_hash()
+        opening_f_L = self.pcs_prover.open(f_polys[0], f_cms[0], eval_chal, eval_f_L, pcs_chal)
+        opening_f_R = self.pcs_prover.open(f_polys[1], f_cms[1], eval_chal, eval_f_L, pcs_chal)
+        opening_f_O = self.pcs_prover.open(f_polys[2], f_cms[2], eval_chal, eval_f_O, pcs_chal)
+        opening_z = self.pcs_prover.open(z_poly, z_cm, eval_chal, eval_z, pcs_chal)
+        opening_z_prime = self.pcs_prover.open(z_poly, z_cm, eval_chal * mult_subgroup[0], eval_z_prime, pcs_chal)
+
+        transcript.append(opening_f_L)
+        transcript.append(opening_f_R)
+        transcript.append(opening_f_O)
+        transcript.append(opening_z)
+        transcript.append(opening_z_prime)
 
 
 

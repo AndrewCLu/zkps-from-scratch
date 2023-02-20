@@ -10,7 +10,7 @@ class Transcript(Generic[FElt]):
     def append(self, entry: bytes) -> None:
         self.record.extend(entry)
 
-    def get_hash(self, salt: Optional[bytes]) -> FElt:
+    def get_hash(self, salt: Optional[bytes]=None) -> FElt:
         bytes_copy = self.record[:]
         if salt:
             bytes_copy.extend(salt)
