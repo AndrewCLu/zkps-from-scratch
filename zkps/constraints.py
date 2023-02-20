@@ -4,8 +4,9 @@ from algebra import FElt
 
 @dataclass
 class PlonkConstraints(Generic[FElt]):
-    m: int
-    n: int
+    l: int # Number of public inputs
+    m: int # Number of wires
+    n: int # Number of gates
     a: List[FElt]
     b: List[FElt]
     c: List[FElt]
@@ -25,6 +26,10 @@ class PlonkConstraints(Generic[FElt]):
             len(self.qO) != self.n or \
             len(self.qM) != self.n or \
             len(self.qC) != self.n:
+            return False
+
+        # Cannot have more public inputs than wires
+        if self.l > self.m:
             return False
         
         # All values in wire constraints must lie between 1 and m
