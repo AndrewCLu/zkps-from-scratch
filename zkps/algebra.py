@@ -2,7 +2,7 @@ from py_ecc import bn128, bls12_381
 from py_ecc.fields.field_elements import FQ
 from py_ecc.typing import Field
 from dataclasses import dataclass
-from typing import TypeVar, Generic, List, Self
+from typing import TypeVar, Generic, List, Type
 
 class bn128_FR(FQ):
     field_modulus = bn128.curve_order
@@ -39,7 +39,7 @@ class Polynomial(Generic[FElt]):
         return Polynomial[FElt](new_coeffs)
 
     def __mul__(self, other: 'Polynomial') -> 'Polynomial':
-        new_coeffs = []
+        new_coeffs: List[FElt] = []
         for i in range(len(self.coeffs)):
             for j in range(len(other.coeffs)):
                 index = i + j
@@ -51,23 +51,24 @@ class Polynomial(Generic[FElt]):
         
         return Polynomial[FElt](new_coeffs)
 
-    def __div__(self, other: FElt) -> 'Polynomial':
-        new_coeffs = []
+    def __truediv__(self, other: FElt) -> 'Polynomial':
+        new_coeffs: List[FElt] = []
         for i in range(len(self.coeffs)):
             new_coeffs.append(self.coeffs[i] / other)
         
         return Polynomial[FElt](new_coeffs)
 
     @staticmethod
-    def interpolate_poly(domain: List[FElt], values: List[FElt]) -> 'Polynomial':
-        assert(len(domain) == len(values), "Must provide number of values equal to size of domain!")
+    def interpolate_poly(domain: List[FElt], values: List[FElt], field_class: Type[FElt]) -> 'Polynomial':
+        if len(domain) != len(values):
+            raise Exception("Must provide number of values equal to size of domain!")
 
-        res = Polynomial[FElt]([0])
+        res = Polynomial[FElt]([field_class.zero()])
         for i in range(len(domain)):
-            lagrange = Polynomial[FElt]([1])
+            lagrange = Polynomial[FElt]([field_class.one()])
             for j in range(len(domain)):
                 if i != j:
-                    lagrange *= Polynomial[FElt]([-domain[j], 1]) / (domain[i] - domain[j])
+                    lagrange *= Polynomial[FElt]([-domain[j], field_class.one()]) / (domain[i] - domain[j])
             res += Polynomial[FElt]([values[i]]) * lagrange
         
         return res
