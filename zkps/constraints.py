@@ -36,6 +36,7 @@ class PlonkConstraints(Generic[FElt]):
         
         return True
 
+    # TODO: This should really be a permutation from [0..n-1] to [1..n]
     def get_permutation(self) -> List[int]:
         wiring_constraints = [self.a, self.b, self.c]
         wire_sets: List[List[int]] = [[]] * self.m

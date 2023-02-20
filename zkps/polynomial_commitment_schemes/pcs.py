@@ -7,6 +7,10 @@ from algebra import FElt, Polynomial
 class Commitment(ABC):
     value: Any
 
+    @abstractmethod
+    def to_bytes(self) -> bytes:
+        pass
+
 @dataclass
 class Opening(ABC):
     value: Any

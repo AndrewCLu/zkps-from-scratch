@@ -9,6 +9,13 @@ from polynomial_commitment_schemes.pcs import Commitment, Opening, PCSProver, PC
 class TrivialCommitment(Commitment, Generic[FElt]):
     value: List[FElt]
 
+    def to_bytes(self) -> bytes:
+        res = bytearray()
+        for i in range(len(self.value)):
+            res.extend(self.value[i].to_bytes)
+        
+        return bytes(res)
+
 @dataclass
 class TrivialOpening(Opening):
     value: None

@@ -7,8 +7,14 @@ from typing import TypeVar, Generic, List, Type
 class bn128_FR(FQ):
     field_modulus = bn128.curve_order
 
+    def to_bytes(self) -> bytes:
+        return bytes(self.n)
+
 class bls12_381_FR(FQ):
     field_modulus = bls12_381.curve_order
+
+    def to_bytes(self) -> bytes:
+        return bytes(self.n)
 
 FElt = TypeVar('FElt', bn128_FR, bls12_381_FR)
 
@@ -25,6 +31,14 @@ class Polynomial(Generic[FElt]):
         
         return res
 
+    # TODO: FFT
+    def eval_on_mult_subgroup(self, mult_subgroup: List[FElt]) -> List[FElt]:
+        res = []
+        for i in range(len(mult_subgroup)):
+            res.append(self.__call__(mult_subgroup[i]))
+        
+        return res
+
     def __add__(self, other: 'Polynomial') -> 'Polynomial':
         longer, shorter = self.coeffs, other.coeffs
         if len(self.coeffs) < len(other.coeffs):
@@ -38,6 +52,7 @@ class Polynomial(Generic[FElt]):
 
         return Polynomial[FElt](new_coeffs)
 
+    # TODO: FFT
     def __mul__(self, other: 'Polynomial') -> 'Polynomial':
         new_coeffs: List[FElt] = []
         for i in range(len(self.coeffs)):
@@ -58,6 +73,7 @@ class Polynomial(Generic[FElt]):
         
         return Polynomial[FElt](new_coeffs)
 
+    # TODO: IFFT
     @staticmethod
     def interpolate_poly(domain: List[FElt], values: List[FElt], field_class: Type[FElt]) -> 'Polynomial':
         if len(domain) != len(values):
