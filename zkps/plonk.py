@@ -18,11 +18,13 @@ class PlonkProof(Generic[FElt]):
     eval_f_O: FElt
     eval_z: FElt
     eval_z_prime: FElt
+    eval_T: FElt
     opening_f_L: Opening
     opening_f_R: Opening
     opening_f_O: Opening
     opening_z: Opening
     opening_z_prime: Opening
+    opening_T: Opening
 
 class PlonkProver(Generic[FElt]):
     # TODO: Maybe abstract mult_subgroup. There is a lot we assume about it here,
@@ -34,7 +36,7 @@ class PlonkProver(Generic[FElt]):
         self.pcs_prover: PCSProver[FElt] = pcs_prover
         self.constraints: PlonkConstraints[FElt] = constraints
         self.preprocessed_input: PlonkPreprocessedInput[FElt] = preprocessed_input
-        self.mult_subgorup: List[FElt] = mult_subgroup
+        self.mult_subgroup: List[FElt] = mult_subgroup
         self.field_class: Type[FElt] = field_class
         
     def prove(self, witness: List[FElt]) -> PlonkProof[FElt]:
@@ -135,26 +137,22 @@ class PlonkProver(Generic[FElt]):
         eval_f_O = f_polys[2](eval_chal)
         eval_z = z_poly(eval_chal)
         eval_z_prime = z_prime_poly(eval_chal)
+        eval_T = T_poly(eval_chal)
 
         transcript.append(eval_f_L.to_bytes())
         transcript.append(eval_f_R.to_bytes())
         transcript.append(eval_f_O.to_bytes())
         transcript.append(eval_z.to_bytes())
         transcript.append(eval_z_prime.to_bytes())
+        transcript.append(eval_T.to_bytes())
 
         open_chal = transcript.get_hash()
         opening_f_L = self.pcs_prover.open(f_polys[0], f_cms[0], eval_chal, eval_f_L, open_chal)
         opening_f_R = self.pcs_prover.open(f_polys[1], f_cms[1], eval_chal, eval_f_L, open_chal)
         opening_f_O = self.pcs_prover.open(f_polys[2], f_cms[2], eval_chal, eval_f_O, open_chal)
         opening_z = self.pcs_prover.open(z_poly, z_cm, eval_chal, eval_z, open_chal)
-        # TODO: This is wrong, can't just evaluate z at g*x since z_prime is a totally different poly
         opening_z_prime = self.pcs_prover.open(z_poly, z_cm, self.mult_subgroup[0] * eval_chal, eval_z_prime, open_chal)
-
-        transcript.append(opening_f_L)
-        transcript.append(opening_f_R)
-        transcript.append(opening_f_O)
-        transcript.append(opening_z)
-        transcript.append(opening_z_prime)
+        opening_T = self.pcs_prover.open(T_poly, T_cm, eval_chal, eval_T, open_chal)
 
         return PlonkProof[FElt](
             f_L_cm = f_cms[0],
@@ -167,11 +165,13 @@ class PlonkProver(Generic[FElt]):
             eval_f_O = eval_f_O,
             eval_z = eval_z,
             eval_z_prime = eval_z_prime,
+            eval_T = eval_T,
             opening_f_L = opening_f_L,
             opening_f_R = opening_f_R,
             opening_f_O = opening_f_O,
             opening_z = opening_z,
-            opening_z_prime = opening_z_prime
+            opening_z_prime = opening_z_prime,
+            opening_T = opening_T
         )
 
 
@@ -183,30 +183,79 @@ class PlonkVerifier(Generic[FElt]):
         self.mult_subgroup: List[FElt] = mult_subgroup
         self.field_class: Type[FElt] = field_class
     
-    def verify(self, proof: PlonkProof[FElt], publicInputs: List[FElt]) -> bool:
+    def verify(self, proof: PlonkProof[FElt], public_inputs: List[FElt]) -> bool:
         transcript = Transcript[FElt](field_class=self.field_class)
-        transcript.append(proof.f_L_cm)
-        transcript.append(proof.f_R_cm)
-        transcript.append(proof.f_O_cm)
-        alpha = transcript.get_hash(salt=bytes(0))
-        beta = transcript.get_hash(salt=bytes(1))
-        transcript.append(proof.z_cm)
+        transcript.append(proof.f_L_cm.to_bytes())
+        transcript.append(proof.f_R_cm.to_bytes())
+        transcript.append(proof.f_O_cm.to_bytes())
+        beta = transcript.get_hash(salt=bytes(0))
+        gamma = transcript.get_hash(salt=bytes(1))
+        transcript.append(proof.z_cm.to_bytes())
+        a_1 = transcript.get_hash(salt=bytes(0))
+        a_2 = transcript.get_hash(salt=bytes(1))
+        a_3 = transcript.get_hash(salt=bytes(2))
+        transcript.append(proof.T_cm.to_bytes())
         eval_chal = transcript.get_hash()
-        transcript.append(proof.T_cm)
+        transcript.append(proof.eval_f_L.to_bytes())
+        transcript.append(proof.eval_f_R.to_bytes())
+        transcript.append(proof.eval_f_O.to_bytes())
+        transcript.append(proof.eval_z.to_bytes())
+        transcript.append(proof.eval_z_prime.to_bytes())
         open_chal = transcript.get_hash()
         
-        # Check all pcs evaluations 
+        # Check all PCS evaluations 
         # TODO: Batched evaluations
+        # TODO: Fail if any of these verification openings fail
         self.pcs_verifier.verify_opening(op=proof.opening_f_L, cm=proof.f_L_cm, z=eval_chal, s=proof.eval_f_L, op_info=open_chal)
         self.pcs_verifier.verify_opening(op=proof.opening_f_R, cm=proof.f_R_cm, z=eval_chal, s=proof.eval_f_R, op_info=open_chal)
         self.pcs_verifier.verify_opening(op=proof.opening_f_O, cm=proof.f_O_cm, z=eval_chal, s=proof.eval_f_O, op_info=open_chal)
         self.pcs_verifier.verify_opening(op=proof.opening_z, cm=proof.z_cm, z=eval_chal, s=proof.eval_z, op_info=open_chal)
         self.pcs_verifier.verify_opening(op=proof.opening_z_prime, cm=proof.z_cm, z=(self.mult_subgroup[0] * eval_chal), s=proof.eval_z_prime, op_info=open_chal)
+        self.pcs_verifier.verify_opening(op=proof.opening_T, cm=proof.T_cm, z = eval_chal, s=proof.eval_T, op_info=open_chal)
 
-        # Check F1
+        # Compute F1
+        L_1 = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=0, field_class=self.field_class)
+        eval_F_1 = L_1(eval_chal) * (proof.eval_z - self.field_class.one())
 
-        # Check F2
+        # Compute F2
+        eval_f_prime = (proof.eval_f_L + beta * self.preprocessed_input.Sid1(eval_chal) + gamma) * \
+            (proof.eval_f_R + beta * self.preprocessed_input.Sid2(eval_chal) + gamma) * \
+            (proof.eval_f_O + beta * self.preprocessed_input.Sid3(eval_chal) + gamma) 
+        eval_g_prime = (proof.eval_f_L + beta * self.preprocessed_input.S1(eval_chal) + gamma) * \
+            (proof.eval_f_R + beta * self.preprocessed_input.S2(eval_chal) + gamma) * \
+            (proof.eval_f_O + beta * self.preprocessed_input.S3(eval_chal) + gamma) 
+        eval_F_2 = proof.eval_z * eval_f_prime - eval_g_prime * proof.eval_z_prime
 
-        # Check F3
+        # Compute F3
+        PI_poly = Polynomial[FElt](coeffs=[self.field_class.zero()])
+        for i in range(len(public_inputs)):
+            lagrange = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=i, field_class=self.field_class)
+            PI_poly += (-public_inputs[i]) * lagrange
+        eval_F_3 = self.preprocessed_input.PqL(eval_chal) * proof.eval_f_L + \
+            self.preprocessed_input.PqR(eval_chal) * proof.eval_f_R + \
+            self.preprocessed_input.PqO(eval_chal) * proof.eval_f_O + \
+            self.preprocessed_input.PqM(eval_chal) * proof.eval_f_L * proof.eval_f_R + \
+            self.preprocessed_input.PqC(eval_chal) + PI_poly(eval_chal)
 
         # Check quotient
+        Z_S_poly = Polynomial[FElt](coeffs=[self.field_class.one()])
+        for i in range(len(self.mult_subgroup)):
+            Z_S_poly *= Polynomial[FElt](coeffs=[-self.mult_subgroup[i], self.field_class.one()])
+        eval_Z_S = Z_S_poly(eval_chal)
+
+        return (a_1 * eval_F_1 + a_2 * eval_F_2 + a_3 * eval_F_3 - proof.eval_T * eval_Z_S) == self.field_class.zero()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
