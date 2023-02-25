@@ -4,14 +4,15 @@ from py_ecc.typing import Field
 from dataclasses import dataclass
 from typing import TypeVar, Generic, List, Type, Union, Tuple
 from copy import deepcopy
+from utils import Byteable
 
-class bn128_FR(FQ):
+class bn128_FR(FQ, Byteable):
     field_modulus = bn128.curve_order
 
     def to_bytes(self) -> bytes:
         return bytes(self.n)
 
-class bls12_381_FR(FQ):
+class bls12_381_FR(FQ, Byteable):
     field_modulus = bls12_381.curve_order
 
     def to_bytes(self) -> bytes:
@@ -57,10 +58,7 @@ class Polynomial(Generic[FElt]):
     # TODO: FFT
     def __mul__(self, other: Union[FElt, 'Polynomial']) -> 'Polynomial':
         new_coeffs: List[FElt] = []
-        if isinstance(other, FElt):
-            for i in range(len(self.coeffs)):
-                new_coeffs.append(other * self.coeffs[i])
-        elif isinstance(other, Polynomial):
+        if isinstance(other, Polynomial):
             for i in range(len(self.coeffs)):
                 for j in range(len(other.coeffs)):
                     index = i + j
@@ -70,18 +68,14 @@ class Polynomial(Generic[FElt]):
                     else:
                         new_coeffs[index] += prod
         else:
-            raise Exception('Argument to mul must be a field element or polynomial!')
+            for i in range(len(self.coeffs)):
+                new_coeffs.append(other * self.coeffs[i])
         
         return Polynomial[FElt](new_coeffs)
 
     # Returns (quotient, remainder) after division by other
     def __truediv__(self, other: Union[FElt, 'Polynomial']) -> Tuple['Polynomial', 'Polynomial']:
-        if isinstance(other, FElt):
-            new_coeffs: List[FElt] = []
-            for i in range(len(self.coeffs)):
-                new_coeffs.append(self.coeffs[i] / other)
-            return (Polynomial[FElt](new_coeffs), Polynomial[FElt]([self.coeffs[0].zero()])) # TODO: Fix these class method calls
-        elif isinstance(other, Polynomial):
+        if isinstance(other, Polynomial):
             num_coeffs = deepcopy(self.coeffs)
             den_coeffs = deepcopy(other.coeffs)
             if len(num_coeffs) < len(den_coeffs):
@@ -100,7 +94,10 @@ class Polynomial(Generic[FElt]):
                     num_coeffs.pop()
             return (Polynomial[FElt](quo_coeffs), Polynomial[FElt](num_coeffs))
         else:
-            raise Exception('Argument to div must be a field element or polynomial!')
+            new_coeffs: List[FElt] = []
+            for i in range(len(self.coeffs)):
+                new_coeffs.append(self.coeffs[i] / other)
+            return (Polynomial[FElt](new_coeffs), Polynomial[FElt]([self.coeffs[0].zero()])) # TODO: Fix these class method calls
 
     # TODO: IFFT
     @staticmethod

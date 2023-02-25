@@ -2,14 +2,11 @@ from typing import Generic, Any
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from algebra import FElt, Polynomial
+from utils import Byteable
 
 @dataclass
-class Commitment(ABC):
+class Commitment(Byteable):
     value: Any
-
-    @abstractmethod
-    def to_bytes(self) -> bytes:
-        pass
 
 @dataclass
 class Opening(ABC):

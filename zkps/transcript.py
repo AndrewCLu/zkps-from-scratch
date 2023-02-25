@@ -1,14 +1,16 @@
 from typing import Generic, List, Optional, Type
 from algebra import FElt
 from Crypto.Hash import keccak
+from utils import Byteable
 
 class Transcript(Generic[FElt]):
     def __init__(self, field_class: Type[FElt]) -> None:
         self.field_class: Type[FElt] = field_class
         self.record: bytearray = bytearray()
 
-    def append(self, entry: bytes) -> None:
-        self.record.extend(entry)
+    def append(self, entry: Byteable) -> None:
+        self.record.extend(entry.to_bytes())
+        print("Appending %s to transcript...", str(entry))
 
     def get_hash(self, salt: Optional[bytes]=None) -> FElt:
         bytes_copy = self.record[:]
@@ -17,4 +19,6 @@ class Transcript(Generic[FElt]):
         k = keccak.new(digest_bits=256)
         k.update(bytes_copy)
 
-        return self.field_class(int(k.hexdigest(), 16))
+        hash_int = int(k.hexdigest(), 16)
+        print("Produced hash %s from transcript...", str(hash_int))
+        return self.field_class(hash_int)

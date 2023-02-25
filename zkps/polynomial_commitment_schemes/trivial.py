@@ -4,9 +4,10 @@ from typing import Generic, Any, List, cast
 from dataclasses import dataclass
 from algebra import FElt, Polynomial
 from polynomial_commitment_schemes.pcs import Commitment, Opening, PCSProver, PCSVerifier
+from utils import Byteable
 
 @dataclass
-class TrivialCommitment(Commitment, Generic[FElt]):
+class TrivialCommitment(Commitment, Byteable, Generic[FElt]):
     value: List[FElt]
 
     def to_bytes(self) -> bytes:
@@ -15,7 +16,7 @@ class TrivialCommitment(Commitment, Generic[FElt]):
             res.extend(self.value[i].to_bytes())
         
         return bytes(res)
-
+    
 @dataclass
 class TrivialOpening(Opening):
     value: None

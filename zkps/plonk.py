@@ -60,7 +60,7 @@ class PlonkProver(Generic[FElt]):
             f_cm = self.pcs_prover.commit(f_poly)
             f_cms.append(f_cm)
             
-            transcript.append(f_cm.to_bytes())
+            transcript.append(f_cm)
         beta = transcript.get_hash(salt=bytes(0))
         gamma = transcript.get_hash(salt=bytes(1))
 
@@ -101,7 +101,7 @@ class PlonkProver(Generic[FElt]):
         z_poly = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=z_values, field_class=self.field_class)
         z_cm = self.pcs_prover.commit(z_poly)
 
-        transcript.append(z_cm.to_bytes())
+        transcript.append(z_cm)
         a_1 = transcript.get_hash(salt=bytes(0))
         a_2 = transcript.get_hash(salt=bytes(1))
         a_3 = transcript.get_hash(salt=bytes(2))
@@ -129,7 +129,7 @@ class PlonkProver(Generic[FElt]):
             Polynomial[FElt](coeffs=[a_3]) * F_3) / Z_S
         T_cm = self.pcs_prover.commit(T_poly)
 
-        transcript.append(T_cm.to_bytes())
+        transcript.append(T_cm)
         eval_chal = transcript.get_hash()
 
         eval_f_L = f_polys[0](eval_chal)
@@ -139,12 +139,12 @@ class PlonkProver(Generic[FElt]):
         eval_z_prime = z_prime_poly(eval_chal)
         eval_T = T_poly(eval_chal)
 
-        transcript.append(eval_f_L.to_bytes())
-        transcript.append(eval_f_R.to_bytes())
-        transcript.append(eval_f_O.to_bytes())
-        transcript.append(eval_z.to_bytes())
-        transcript.append(eval_z_prime.to_bytes())
-        transcript.append(eval_T.to_bytes())
+        transcript.append(eval_f_L)
+        transcript.append(eval_f_R)
+        transcript.append(eval_f_O)
+        transcript.append(eval_z)
+        transcript.append(eval_z_prime)
+        transcript.append(eval_T)
 
         open_chal = transcript.get_hash()
         opening_f_L = self.pcs_prover.open(f_polys[0], f_cms[0], eval_chal, eval_f_L, open_chal)
@@ -185,22 +185,22 @@ class PlonkVerifier(Generic[FElt]):
     
     def verify(self, proof: PlonkProof[FElt], public_inputs: List[FElt]) -> bool:
         transcript = Transcript[FElt](field_class=self.field_class)
-        transcript.append(proof.f_L_cm.to_bytes())
-        transcript.append(proof.f_R_cm.to_bytes())
-        transcript.append(proof.f_O_cm.to_bytes())
+        transcript.append(proof.f_L_cm)
+        transcript.append(proof.f_R_cm)
+        transcript.append(proof.f_O_cm)
         beta = transcript.get_hash(salt=bytes(0))
         gamma = transcript.get_hash(salt=bytes(1))
-        transcript.append(proof.z_cm.to_bytes())
+        transcript.append(proof.z_cm)
         a_1 = transcript.get_hash(salt=bytes(0))
         a_2 = transcript.get_hash(salt=bytes(1))
         a_3 = transcript.get_hash(salt=bytes(2))
-        transcript.append(proof.T_cm.to_bytes())
+        transcript.append(proof.T_cm)
         eval_chal = transcript.get_hash()
-        transcript.append(proof.eval_f_L.to_bytes())
-        transcript.append(proof.eval_f_R.to_bytes())
-        transcript.append(proof.eval_f_O.to_bytes())
-        transcript.append(proof.eval_z.to_bytes())
-        transcript.append(proof.eval_z_prime.to_bytes())
+        transcript.append(proof.eval_f_L)
+        transcript.append(proof.eval_f_R)
+        transcript.append(proof.eval_f_O)
+        transcript.append(proof.eval_z)
+        transcript.append(proof.eval_z_prime)
         open_chal = transcript.get_hash()
         
         # Check all PCS evaluations 

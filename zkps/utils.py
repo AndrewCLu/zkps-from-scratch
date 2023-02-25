@@ -1,3 +1,10 @@
+from abc import ABC, abstractmethod
+
+class Byteable(ABC):
+    @abstractmethod
+    def to_bytes(self) -> bytes:
+        pass
+
 def is_power_of_2(n: int) -> bool:
     curr = 1
     while True:
@@ -13,3 +20,4 @@ def get_smallest_power_of_2_greater_than_n(n: int) -> int:
         curr *= 2
     
     return curr
+    
