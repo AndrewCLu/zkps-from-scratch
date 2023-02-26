@@ -34,9 +34,9 @@ class PlonkConstraints(Generic[FElt]):
         
         # All values in wire constraints must lie between 1 and m
         for i in range(self.n):
-            if self.a[i].n == 0 or self.a[i].n > self.m or \
-                self.b[i].n == 0 or self.b[i].n > self.m or \
-                self.c[i].n == 0 or self.c[i].n > self.m:
+            if self.a[i].n <= 0 or self.a[i].n > self.m or \
+                self.b[i].n <= 0 or self.b[i].n > self.m or \
+                self.c[i].n <= 0 or self.c[i].n > self.m:
                 return False
         
         return True
@@ -44,7 +44,7 @@ class PlonkConstraints(Generic[FElt]):
     # This is a permutation from [0..3n-1] to itself based on the wiring of the gates
     def get_permutation(self) -> List[int]:
         wiring_constraints = [self.a, self.b, self.c]
-        wire_sets: List[List[int]] = [[]] * self.m
+        wire_sets: List[List[int]] = [[] for _ in range(self.m)]
         for j in range(3):
             for i in range(self.n):
                 wire_index = wiring_constraints[j][i].n - 1 # Unique index of wire
