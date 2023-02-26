@@ -2,17 +2,19 @@ from plonk import PlonkProver, PlonkVerifier
 from polynomial_commitment_schemes.trivial import TrivialProver, TrivialVerifier
 from algebra import bn128_FR
 from constraints import PlonkConstraints
-from preprocessor import preprocess_plonk_constraints
+from preprocessor import Preprocessor
 
-def test_plonk_sanity():
-    contraints = PlonkConstraints(7, 3, [bn128_FR(1), bn128_FR(3), bn128_FR(5)], [bn128_FR(2), bn128_FR(4), bn128_FR(6)], [bn128_FR(5), bn128_FR(6), bn128_FR(7)], [bn128_FR(1), bn128_FR(1), bn128_FR(1)], [bn128_FR(1), bn128_FR(1), bn128_FR(1)], [bn128_FR(-1), bn128_FR(-1), bn128_FR(-1)], [bn128_FR(0), bn128_FR(0), bn128_FR(0)], [bn128_FR(0), bn128_FR(0), bn128_FR(0)])
-    preprocessed_input = preprocess_plonk_constraints(contraints)
+def test_plonk():
+    constraints = PlonkConstraints(3, 7, 3, [bn128_FR(1), bn128_FR(3), bn128_FR(5)], [bn128_FR(2), bn128_FR(4), bn128_FR(6)], [bn128_FR(5), bn128_FR(6), bn128_FR(7)], [bn128_FR(1), bn128_FR(1), bn128_FR(1)], [bn128_FR(1), bn128_FR(1), bn128_FR(1)], [bn128_FR(-1), bn128_FR(-1), bn128_FR(-1)], [bn128_FR(0), bn128_FR(0), bn128_FR(0)], [bn128_FR(0), bn128_FR(0), bn128_FR(0)])
+    mult_subgroup = [bn128_FR(1), bn128_FR(2), bn128_FR(3)]
+    field_class = bn128_FR
+    preprocessed_input = Preprocessor.preprocess_plonk_constraints(constraints=constraints, mult_subgroup=mult_subgroup, field_class=field_class)
 
     pcs_prover = TrivialProver[bn128_FR]()
     pcs_verifier = TrivialVerifier[bn128_FR]()
 
-    plonk_prover = PlonkProver[bn128_FR](pcs_prover, preprocessed_input)
-    plonk_verifier = PlonkVerifier[bn128_FR](pcs_verifier, preprocessed_input)
+    plonk_prover = PlonkProver[bn128_FR](pcs_prover=pcs_prover, constraints=constraints, preprocessed_input=preprocessed_input, mult_subgroup=mult_subgroup, field_class=field_class)
+    plonk_verifier = PlonkVerifier[bn128_FR](pcs_verifier=pcs_verifier, preprocessed_input=preprocessed_input, mult_subgroup=mult_subgroup, field_class=field_class)
 
     public_inputs = [bn128_FR(10), bn128_FR(20), bn128_FR(30)]
     witness = public_inputs + [bn128_FR(40), bn128_FR(30), bn128_FR(70), bn128_FR(100)]

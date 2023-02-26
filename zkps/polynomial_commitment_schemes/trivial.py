@@ -16,6 +16,9 @@ class TrivialCommitment(Commitment, Byteable, Generic[FElt]):
             res.extend(self.value[i].to_bytes())
         
         return bytes(res)
+
+    def __str__(self) -> str:
+        return ", ".join([str(x) for x in self.value])
     
 @dataclass
 class TrivialOpening(Opening):

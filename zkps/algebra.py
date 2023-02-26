@@ -4,19 +4,25 @@ from py_ecc.typing import Field
 from dataclasses import dataclass
 from typing import TypeVar, Generic, List, Type, Union, Tuple
 from copy import deepcopy
-from utils import Byteable
+from utils import Byteable, unsigned_int_to_bytes
 
 class bn128_FR(FQ, Byteable):
     field_modulus = bn128.curve_order
 
     def to_bytes(self) -> bytes:
-        return bytes(self.n)
+        return unsigned_int_to_bytes(self.n)
+
+    def to_string(self) -> str:
+        return "{n} [{mod}]".format(n = self.n, mod = self.field_modulus)
 
 class bls12_381_FR(FQ, Byteable):
     field_modulus = bls12_381.curve_order
 
     def to_bytes(self) -> bytes:
-        return bytes(self.n)
+        return unsigned_int_to_bytes(self.n)
+
+    def to_string(self) -> str:
+        return "{n} [{mod}]".format(n = self.n, mod = self.field_modulus)
 
 FElt = TypeVar('FElt', bn128_FR, bls12_381_FR)
 
@@ -41,19 +47,37 @@ class Polynomial(Generic[FElt]):
         
         return res
 
-    # TODO: Auto truncate zero leading coeffs in poly
     def __add__(self, other: 'Polynomial') -> 'Polynomial':
         longer, shorter = self.coeffs, other.coeffs
         if len(self.coeffs) < len(other.coeffs):
             longer, shorter = other.coeffs, self.coeffs
         
-        new_coeffs = []
+        new_coeffs: FElt = []
         for i in range(len(shorter)):
             new_coeffs.append(longer[i] + shorter[i])
         for i in range(len(shorter), len(longer)):
             new_coeffs.append(longer[i])
 
+        # Truncate leading zeros 
+        while len(new_coeffs) > 1 and new_coeffs[-1] == self.coeffs[0].zero(): ## Fix these class method calls
+            new_coeffs.pop()
+
         return Polynomial[FElt](new_coeffs)
+
+    def __sub__(self, other: 'Polynomial') -> 'Polynomial':
+        new_coeffs: List[FElt] = []
+        for i in range(min(len(self.coeffs), len(other.coeffs))):
+            new_coeffs.append(self.coeffs[i] - other.coeffs[i])
+
+        if len(self.coeffs) >= len(other.coeffs):
+            for j in range(min(len(self.coeffs), len(other.coeffs)), max(len(self.coeffs), len(other.coeffs))):
+                new_coeffs.append(self.coeffs[j])
+        else:
+            for j in range(min(len(self.coeffs), len(other.coeffs)), max(len(self.coeffs), len(other.coeffs))):
+                new_coeffs.append(-other.coeffs[j])
+        
+        return Polynomial[FElt](new_coeffs)
+            
 
     # TODO: FFT
     def __mul__(self, other: Union[FElt, 'Polynomial']) -> 'Polynomial':
@@ -62,7 +86,7 @@ class Polynomial(Generic[FElt]):
             for i in range(len(self.coeffs)):
                 for j in range(len(other.coeffs)):
                     index = i + j
-                    prod = self.coeffs[i] * self.coeffs[j]
+                    prod = self.coeffs[i] * other.coeffs[j]
                     if index >= len(new_coeffs):
                         new_coeffs.append(prod)
                     else:
@@ -89,15 +113,27 @@ class Polynomial(Generic[FElt]):
                 else:
                     quo = num_coeffs[-1] / den_coeffs[-1]
                     quo_coeffs.insert(0, quo)
-                    for i in range(len(quo_coeffs)):
+                    for i in range(len(den_coeffs)):
                         num_coeffs[-(1+i)] -= quo * den_coeffs[-(1+i)]
                     num_coeffs.pop()
+            # Truncate leading zeros 
+            while len(num_coeffs) > 1 and num_coeffs[-1] == self.coeffs[0].zero(): ## Fix these class method calls
+                num_coeffs.pop()
             return (Polynomial[FElt](quo_coeffs), Polynomial[FElt](num_coeffs))
         else:
             new_coeffs: List[FElt] = []
             for i in range(len(self.coeffs)):
                 new_coeffs.append(self.coeffs[i] / other)
             return (Polynomial[FElt](new_coeffs), Polynomial[FElt]([self.coeffs[0].zero()])) # TODO: Fix these class method calls
+
+    def __eq__(self, other: 'Polynomial') -> bool:
+        if len(self.coeffs) != len(other.coeffs):
+            return False
+        for i in range(len(self.coeffs)):
+            if self.coeffs[i] != other.coeffs[i]:
+                return False
+
+        return True
 
     # TODO: IFFT
     @staticmethod

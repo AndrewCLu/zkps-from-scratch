@@ -41,15 +41,15 @@ class PlonkConstraints(Generic[FElt]):
         
         return True
 
-    # TODO: This should really be a permutation from [0..n-1] to [1..n]
+    # This is a permutation from [0..3n-1] to itself based on the wiring of the gates
     def get_permutation(self) -> List[int]:
         wiring_constraints = [self.a, self.b, self.c]
         wire_sets: List[List[int]] = [[]] * self.m
         for j in range(3):
             for i in range(self.n):
-                value = wiring_constraints[j][i].n
-                index = j * self.n + i
-                wire_sets[value].append(index)
+                wire_index = wiring_constraints[j][i].n - 1 # Unique index of wire
+                perm_index = j * self.n + i # Unique index of gate input/output
+                wire_sets[wire_index].append(perm_index)
 
         res = [0] * (3 * self.n)
         for wire_set in wire_sets: 

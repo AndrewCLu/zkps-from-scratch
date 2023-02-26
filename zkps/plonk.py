@@ -53,7 +53,7 @@ class PlonkProver(Generic[FElt]):
         for j in range(3):
             f_values = []
             for i in range(self.constraints.n):
-                f_values.append(witness[abc_constraints[j][i].n])
+                f_values.append(witness[abc_constraints[j][i].n - 1]) # Witnesses are 1-indexed as constraints
             f_LRO_values.append(f_values)
             f_poly = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=f_values, field_class=self.field_class)
             f_polys.append(f_poly)
@@ -124,9 +124,12 @@ class PlonkProver(Generic[FElt]):
         Z_S = Polynomial[FElt](coeffs=[self.field_class.one()])
         for i in range(len(self.mult_subgroup)):
             Z_S *= Polynomial[FElt](coeffs=[-self.mult_subgroup[i], self.field_class.one()])
-        T_poly = (Polynomial[FElt](coeffs=[a_1]) * F_1 + \
+        T_poly, T_poly_rem = (Polynomial[FElt](coeffs=[a_1]) * F_1 + \
             Polynomial[FElt](coeffs=[a_2]) * F_2 + \
             Polynomial[FElt](coeffs=[a_3]) * F_3) / Z_S
+        # If prover is honest Z_S divides cleanly
+        if T_poly_rem != Polynomial[FElt](coeffs=[self.field_class.zero()]):
+            raise Exception("Unable to compute T polynomial: Z_S does not divide evenly!")
         T_cm = self.pcs_prover.commit(T_poly)
 
         transcript.append(T_cm)
@@ -230,7 +233,7 @@ class PlonkVerifier(Generic[FElt]):
         PI_poly = Polynomial[FElt](coeffs=[self.field_class.zero()])
         for i in range(len(public_inputs)):
             lagrange = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=i, field_class=self.field_class)
-            PI_poly += (-public_inputs[i]) * lagrange
+            PI_poly += lagrange * (-public_inputs[i]) 
         eval_F_3 = self.preprocessed_input.PqL(eval_chal) * proof.eval_f_L + \
             self.preprocessed_input.PqR(eval_chal) * proof.eval_f_R + \
             self.preprocessed_input.PqO(eval_chal) * proof.eval_f_O + \

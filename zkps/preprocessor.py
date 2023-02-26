@@ -28,8 +28,10 @@ class Preprocessor(Generic[FElt]):
             s_sigma_values = []
             for i in range(constraints.n):
                 index = j * constraints.n + i
-                s_id_values.append(field_class(index))
-                s_sigma_values.append(field_class(permutation[index]))
+                # We add 1 to each of the below values to match the paper...
+                # Identity and permutation polynomials should be defined on [1..3n]
+                s_id_values.append(field_class(index + 1))
+                s_sigma_values.append(field_class(permutation[index] + 1))
             
             s_id_polys.append(Polynomial.interpolate_poly(domain=mult_subgroup, values=s_id_values, field_class=field_class))
             s_sigma_polys.append(Polynomial.interpolate_poly(domain=mult_subgroup, values=s_sigma_values, field_class=field_class))
