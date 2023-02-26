@@ -35,8 +35,6 @@ class TrivialProver(PCSProver, Generic[FElt]):
 
 class TrivialVerifier(PCSVerifier, Generic[FElt]):
     def verify_opening(self, op: Opening, cm: Commitment, z: FElt, s: FElt, op_info: Any) -> bool:
-        if not isinstance(op, TrivialOpening):
-            raise Exception('Wrong opening used. Must provide a trivial opening.')
         if not isinstance(cm, TrivialCommitment):
             raise Exception('Wrong commitment used. Must provide a trivial commitment.')
         coeffs: List[FElt] = cast(TrivialCommitment[FElt], cm).value
