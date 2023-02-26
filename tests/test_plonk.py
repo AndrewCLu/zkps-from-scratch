@@ -4,8 +4,20 @@ from algebra import bn128_FR
 from constraints import PlonkConstraints
 from preprocessor import Preprocessor
 
-def test_plonk():
-    constraints = PlonkConstraints(3, 7, 3, [bn128_FR(1), bn128_FR(3), bn128_FR(5)], [bn128_FR(2), bn128_FR(4), bn128_FR(6)], [bn128_FR(5), bn128_FR(6), bn128_FR(7)], [bn128_FR(1), bn128_FR(1), bn128_FR(1)], [bn128_FR(1), bn128_FR(1), bn128_FR(1)], [bn128_FR(-1), bn128_FR(-1), bn128_FR(-1)], [bn128_FR(0), bn128_FR(0), bn128_FR(0)], [bn128_FR(0), bn128_FR(0), bn128_FR(0)])
+def test_plonk_trivial_pcs():
+    constraints = PlonkConstraints(
+        l=3, 
+        m=7, 
+        n=3, 
+        a=[bn128_FR(1), bn128_FR(3), bn128_FR(5)], 
+        b=[bn128_FR(2), bn128_FR(4), bn128_FR(6)], 
+        c=[bn128_FR(5), bn128_FR(6), bn128_FR(7)], 
+        qL=[bn128_FR(1), bn128_FR(1), bn128_FR(1)], 
+        qR=[bn128_FR(1), bn128_FR(1), bn128_FR(1)], 
+        qO=[bn128_FR(-1), bn128_FR(-1), bn128_FR(-1)], 
+        qM=[bn128_FR(0), bn128_FR(0), bn128_FR(0)], 
+        qC=[bn128_FR(0), bn128_FR(0), bn128_FR(0)]
+    )
     mult_subgroup = [bn128_FR(1), bn128_FR(2), bn128_FR(3)]
     field_class = bn128_FR
     preprocessed_input = Preprocessor.preprocess_plonk_constraints(constraints=constraints, mult_subgroup=mult_subgroup, field_class=field_class)

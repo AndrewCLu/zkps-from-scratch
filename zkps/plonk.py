@@ -5,26 +5,28 @@ from constraints import PlonkConstraints
 from preprocessor import PlonkPreprocessedInput
 from polynomial_commitment_schemes.pcs import PCSProver, PCSVerifier, Commitment, Opening
 from transcript import Transcript
+from copy import deepcopy
 
 @dataclass
 class PlonkProof(Generic[FElt]):
     f_L_cm: Commitment
     f_R_cm: Commitment
     f_O_cm: Commitment
-    z_cm: Commitment
+    Z_cm: Commitment
+    Z_shift_cm: Commitment
     T_cm: Commitment
-    eval_f_L: FElt
-    eval_f_R: FElt
-    eval_f_O: FElt
-    eval_z: FElt
-    eval_z_prime: FElt
-    eval_T: FElt
-    opening_f_L: Opening
-    opening_f_R: Opening
-    opening_f_O: Opening
-    opening_z: Opening
-    opening_z_prime: Opening
-    opening_T: Opening
+    f_L_eval: FElt
+    f_R_eval: FElt
+    f_O_eval: FElt
+    Z_eval: FElt
+    Z_shift_eval: FElt
+    T_eval: FElt
+    f_L_op: Opening
+    f_R_op: Opening
+    f_O_op: Opening
+    Z_op: Opening
+    Z_shift_op: Opening
+    T_op: Opening
 
 class PlonkProver(Generic[FElt]):
     # TODO: Maybe abstract mult_subgroup. There is a lot we assume about it here,
@@ -32,6 +34,8 @@ class PlonkProver(Generic[FElt]):
     def __init__(self, pcs_prover: PCSProver[FElt], constraints: PlonkConstraints[FElt], preprocessed_input: PlonkPreprocessedInput[FElt], mult_subgroup: List[FElt], field_class: Type[FElt]) -> None:
         if not constraints.is_valid_constraint():
             raise Exception("Constraints must be valid!")
+        if not field_class.field_modulus > 3 * constraints.n:
+            raise Exception("Field size must be greater than total number of wire variables!")
 
         self.pcs_prover: PCSProver[FElt] = pcs_prover
         self.constraints: PlonkConstraints[FElt] = constraints
@@ -42,139 +46,118 @@ class PlonkProver(Generic[FElt]):
     def prove(self, witness: List[FElt]) -> PlonkProof[FElt]:
         if len(witness) != self.constraints.m:
             raise Exception("Must have witness length equal to number of unique wires in constraints!")
-        # TODO: Need check to make sure field size is greater than n or m
 
         transcript = Transcript[FElt](field_class=self.field_class)
 
-        abc_constraints = [self.constraints.a, self.constraints.b, self.constraints.c]
-        f_LRO_values: List[List[FElt]] = []
-        f_polys: List[Polynomial[FElt]] = []
-        f_cms: List[Commitment] = []
-        for j in range(3):
-            f_values = []
-            for i in range(self.constraints.n):
-                f_values.append(witness[abc_constraints[j][i].n - 1]) # Witnesses are 1-indexed as constraints
-            f_LRO_values.append(f_values)
-            f_poly = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=f_values, field_class=self.field_class)
-            f_polys.append(f_poly)
-            f_cm = self.pcs_prover.commit(f_poly)
-            f_cms.append(f_cm)
-            
-            transcript.append(f_cm)
+        # ---------- Commit to f_L, f_R, f_O ----------
+        f_L_values = [witness[self.constraints.a[i].n - 1] for i in range(self.constraints.n)]
+        f_L = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=f_L_values, field_class=self.field_class)
+        f_L_cm = self.pcs_prover.commit(f_L)
+        f_R_values = [witness[self.constraints.b[i].n - 1] for i in range(self.constraints.n)]
+        f_R = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=f_R_values, field_class=self.field_class)
+        f_R_cm = self.pcs_prover.commit(f_R)
+        f_O_values = [witness[self.constraints.c[i].n - 1] for i in range(self.constraints.n)]
+        f_O = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=f_O_values, field_class=self.field_class)
+        f_O_cm = self.pcs_prover.commit(f_O)
+        transcript.append(f_L_cm)
+        transcript.append(f_R_cm)
+        transcript.append(f_O_cm)
+
+        # ---------- Commit to grand product polynomial Z ----------
         beta = transcript.get_hash(salt=bytes(0))
         gamma = transcript.get_hash(salt=bytes(1))
-
-        permutation = self.constraints.get_permutation()
-        # f_prime_values and g_prime_values are purely used to make it easier to calculate z, 
-        # since it is defined by its values on the multiplicative subgroup
-        # To compute f_prime_poly and g_prime_poly, we need to multiply the individual
-        # f's and g's together, or know their values on a domain of size 3n rather than n
-        f_prime_values: List[FElt] = []
-        g_prime_values: List[FElt] = []
-        f_prime_poly: Polynomial[FElt] = Polynomial[FElt](coeffs=[self.field_class.one()])
-        g_prime_poly: Polynomial[FElt] = Polynomial[FElt](coeffs=[self.field_class.one()])
-        for j in range(3):
-            f_values: List[FElt] = []
-            g_values: List[FElt] = []
-            for i in range(self.constraints.n):
-                # TODO: Should add 1 to every identity and permutation index
-                f_value = f_LRO_values[j][i] + beta * self.field_class(j * self.constraints.n + i) + gamma
-                g_value = f_LRO_values[j][i] + beta * self.field_class(permutation[j * self.constraints.n + i]) + gamma
-                f_values.append(f_value)
-                g_values.append(g_value)
-                if i >= len(f_prime_values):
-                    f_prime_values.append(f_value)
-                    g_prime_values.append(g_value)
-                else:
-                    f_prime_values[i] *= f_value
-                    g_prime_values[i] *= g_value
-            f_poly = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=f_values, field_class=self.field_class)
-            g_poly = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=g_values, field_class=self.field_class)
-            f_prime_poly *= f_poly
-            g_prime_poly *= g_poly
-        # TODO: Move computation of z into above
-        curr_prod = self.field_class.one()
-        z_values: List[FElt] = [curr_prod]
+        f_prime_1 = f_L + self.preprocessed_input.Sid1 * beta + Polynomial[FElt](coeffs=[gamma])
+        g_prime_1 = f_L + self.preprocessed_input.S1 * beta + Polynomial[FElt](coeffs=[gamma])
+        f_prime_2 = f_R + self.preprocessed_input.Sid2 * beta + Polynomial[FElt](coeffs=[gamma])
+        g_prime_2 = f_R + self.preprocessed_input.S2 * beta + Polynomial[FElt](coeffs=[gamma])
+        f_prime_3 = f_O + self.preprocessed_input.Sid3 * beta + Polynomial[FElt](coeffs=[gamma])
+        g_prime_3 = f_O + self.preprocessed_input.S3 * beta + Polynomial[FElt](coeffs=[gamma])
+        f_prime = f_prime_1 * f_prime_2 * f_prime_3
+        g_prime = g_prime_1 * g_prime_2 * g_prime_3
+        Z_values = [self.field_class.one()]
+        prod = self.field_class.one()
         for i in range(self.constraints.n - 1):
-            curr_prod *= f_prime_values[i] / g_prime_values[i]
-            z_values.append(curr_prod)
-        z_poly = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=z_values, field_class=self.field_class)
-        z_cm = self.pcs_prover.commit(z_poly)
+            prod *= f_prime(self.mult_subgroup[i]) / g_prime(self.mult_subgroup[i])
+            Z_values.append(self.field_class(prod.n)) # Copy over product value into new field element
+        Z = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=Z_values, field_class=self.field_class)
+        Z_cm = self.pcs_prover.commit(Z)
+        Z_shift_values = deepcopy(Z_values[1:] + Z_values[:1]) # Represents values of Z(a*g)
+        Z_shift = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=Z_shift_values, field_class=self.field_class)
+        Z_shift_cm = self.pcs_prover.commit(Z_shift)
+        transcript.append(Z_cm)
+        transcript.append(Z_shift_cm)
 
-        transcript.append(z_cm)
+        # ---------- Commit to quotient polynomial T ----------
         a_1 = transcript.get_hash(salt=bytes(0))
         a_2 = transcript.get_hash(salt=bytes(1))
         a_3 = transcript.get_hash(salt=bytes(2))
-
         L_1 = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=0, field_class=self.field_class)
-        F_1 = L_1 * (z_poly - Polynomial[FElt](coeffs=[self.field_class.one()]))
-        z_prime_values: List[FElt] = z_values[1:] + z_values[:1]
-        z_prime_poly = Polynomial.interpolate_poly(domain=self.mult_subgroup, values=z_prime_values, field_class=self.field_class)
-        F_2 = z_poly * f_prime_poly - g_prime_poly * z_prime_poly
-        PI_poly = Polynomial[FElt](coeffs=[self.field_class.zero()])
+        F_1 = L_1 * (Z - Polynomial[FElt](coeffs=[self.field_class.one()]))
+        F_2 = Z * f_prime - g_prime * Z_shift
+        PI = Polynomial[FElt](coeffs=[self.field_class.zero()])
         for i in range(self.constraints.l):
-            value = -witness[i]
             lagrange = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=i, field_class=self.field_class)
-            PI_poly += lagrange * Polynomial[FElt](coeffs=[value])
-        F_3 = self.preprocessed_input.PqL * f_polys[0] + \
-            self.preprocessed_input.PqR * f_polys[1] + \
-            self.preprocessed_input.PqO * f_polys[2] + \
-            self.preprocessed_input.PqM * f_polys[0] * f_polys[1] + \
-            self.preprocessed_input.PqC + PI_poly
+            PI += lagrange * -witness[i]
+        F_3 = self.preprocessed_input.PqL * f_L + \
+            self.preprocessed_input.PqR * f_R + \
+            self.preprocessed_input.PqO * f_O + \
+            self.preprocessed_input.PqM * f_L * f_R + \
+            self.preprocessed_input.PqC + PI
         Z_S = Polynomial[FElt](coeffs=[self.field_class.one()])
         for i in range(len(self.mult_subgroup)):
             Z_S *= Polynomial[FElt](coeffs=[-self.mult_subgroup[i], self.field_class.one()])
-        T_poly, T_poly_rem = (Polynomial[FElt](coeffs=[a_1]) * F_1 + \
+        T, T_rem = (Polynomial[FElt](coeffs=[a_1]) * F_1 + \
             Polynomial[FElt](coeffs=[a_2]) * F_2 + \
             Polynomial[FElt](coeffs=[a_3]) * F_3) / Z_S
         # If prover is honest Z_S divides cleanly
-        if T_poly_rem != Polynomial[FElt](coeffs=[self.field_class.zero()]):
+        if T_rem != Polynomial[FElt](coeffs=[self.field_class.zero()]):
             raise Exception("Unable to compute T polynomial: Z_S does not divide evenly!")
-        T_cm = self.pcs_prover.commit(T_poly)
-
+        T_cm = self.pcs_prover.commit(T)
         transcript.append(T_cm)
+
+        # ---------- Compute evaluations of all polynomials ----------
         eval_chal = transcript.get_hash()
+        f_L_eval = f_L(eval_chal)
+        f_R_eval = f_R(eval_chal)
+        f_O_eval = f_O(eval_chal)
+        Z_eval = Z(eval_chal)
+        Z_shift_eval = Z_shift(eval_chal)
+        T_eval = T(eval_chal)
+        transcript.append(f_L_eval)
+        transcript.append(f_R_eval)
+        transcript.append(f_O_eval)
+        transcript.append(Z_eval)
+        transcript.append(Z_shift_eval)
+        transcript.append(T_eval)  
 
-        eval_f_L = f_polys[0](eval_chal)
-        eval_f_R = f_polys[1](eval_chal)
-        eval_f_O = f_polys[2](eval_chal)
-        eval_z = z_poly(eval_chal)
-        eval_z_prime = z_prime_poly(eval_chal)
-        eval_T = T_poly(eval_chal)
-
-        transcript.append(eval_f_L)
-        transcript.append(eval_f_R)
-        transcript.append(eval_f_O)
-        transcript.append(eval_z)
-        transcript.append(eval_z_prime)
-        transcript.append(eval_T)
-
+        # ---------- Compute opening proofs of all commitments ----------
         open_chal = transcript.get_hash()
-        opening_f_L = self.pcs_prover.open(f_polys[0], f_cms[0], eval_chal, eval_f_L, open_chal)
-        opening_f_R = self.pcs_prover.open(f_polys[1], f_cms[1], eval_chal, eval_f_L, open_chal)
-        opening_f_O = self.pcs_prover.open(f_polys[2], f_cms[2], eval_chal, eval_f_O, open_chal)
-        opening_z = self.pcs_prover.open(z_poly, z_cm, eval_chal, eval_z, open_chal)
-        opening_z_prime = self.pcs_prover.open(z_poly, z_cm, self.mult_subgroup[0] * eval_chal, eval_z_prime, open_chal)
-        opening_T = self.pcs_prover.open(T_poly, T_cm, eval_chal, eval_T, open_chal)
+        f_L_op = self.pcs_prover.open(f=f_L, cm=f_L_cm, s=eval_chal, z=f_L_eval, op_info=open_chal)
+        f_R_op = self.pcs_prover.open(f=f_R, cm=f_R_cm, s=eval_chal, z=f_R_eval, op_info=open_chal)
+        f_O_op = self.pcs_prover.open(f=f_O, cm=f_O_cm, s=eval_chal, z=f_O_eval, op_info=open_chal)
+        Z_op = self.pcs_prover.open(f=Z, cm=Z_cm, s=eval_chal, z=Z_eval, op_info=open_chal)
+        Z_shift_op = self.pcs_prover.open(f=Z_shift, cm=Z_shift_cm, s=eval_chal, z=Z_shift_eval, op_info=open_chal)
+        T_op = self.pcs_prover.open(f=T, cm=T_cm, s=eval_chal, z=T_eval, op_info=open_chal)
 
         return PlonkProof[FElt](
-            f_L_cm = f_cms[0],
-            f_R_cm = f_cms[1],
-            f_O_cm = f_cms[2],
-            z_cm = z_cm,
-            T_cm = T_cm,
-            eval_f_L = eval_f_L,
-            eval_f_R = eval_f_R,
-            eval_f_O = eval_f_O,
-            eval_z = eval_z,
-            eval_z_prime = eval_z_prime,
-            eval_T = eval_T,
-            opening_f_L = opening_f_L,
-            opening_f_R = opening_f_R,
-            opening_f_O = opening_f_O,
-            opening_z = opening_z,
-            opening_z_prime = opening_z_prime,
-            opening_T = opening_T
+            f_L_cm=f_L_cm,
+            f_R_cm=f_R_cm,
+            f_O_cm=f_O_cm,
+            Z_cm=Z_cm,
+            Z_shift_cm=Z_shift_cm,
+            T_cm=T_cm,
+            f_L_eval=f_L_eval,
+            f_R_eval=f_R_eval,
+            f_O_eval=f_O_eval,
+            Z_eval=Z_eval,
+            Z_shift_eval=Z_shift_eval,
+            T_eval=T_eval,
+            f_L_op=f_L_op,
+            f_R_op=f_R_op,
+            f_O_op=f_O_op,
+            Z_op=Z_op,
+            Z_shift_op=Z_shift_op,
+            T_op=T_op
         )
 
 
@@ -187,66 +170,70 @@ class PlonkVerifier(Generic[FElt]):
         self.field_class: Type[FElt] = field_class
     
     def verify(self, proof: PlonkProof[FElt], public_inputs: List[FElt]) -> bool:
+        # ---------- Re-execute transcript based on proof values ----------
         transcript = Transcript[FElt](field_class=self.field_class)
         transcript.append(proof.f_L_cm)
         transcript.append(proof.f_R_cm)
         transcript.append(proof.f_O_cm)
         beta = transcript.get_hash(salt=bytes(0))
         gamma = transcript.get_hash(salt=bytes(1))
-        transcript.append(proof.z_cm)
+        transcript.append(proof.Z_cm)
+        transcript.append(proof.Z_shift_cm)
         a_1 = transcript.get_hash(salt=bytes(0))
         a_2 = transcript.get_hash(salt=bytes(1))
         a_3 = transcript.get_hash(salt=bytes(2))
         transcript.append(proof.T_cm)
         eval_chal = transcript.get_hash()
-        transcript.append(proof.eval_f_L)
-        transcript.append(proof.eval_f_R)
-        transcript.append(proof.eval_f_O)
-        transcript.append(proof.eval_z)
-        transcript.append(proof.eval_z_prime)
+        transcript.append(proof.f_L_eval)
+        transcript.append(proof.f_R_eval)
+        transcript.append(proof.f_O_eval)
+        transcript.append(proof.Z_eval)
+        transcript.append(proof.Z_shift_eval)
+        transcript.append(proof.T_eval)
         open_chal = transcript.get_hash()
         
-        # Check all PCS evaluations 
+        # ---------- Verify all polynomial commitments ----------
         # TODO: Batched evaluations
         # TODO: Fail if any of these verification openings fail
-        self.pcs_verifier.verify_opening(op=proof.opening_f_L, cm=proof.f_L_cm, z=eval_chal, s=proof.eval_f_L, op_info=open_chal)
-        self.pcs_verifier.verify_opening(op=proof.opening_f_R, cm=proof.f_R_cm, z=eval_chal, s=proof.eval_f_R, op_info=open_chal)
-        self.pcs_verifier.verify_opening(op=proof.opening_f_O, cm=proof.f_O_cm, z=eval_chal, s=proof.eval_f_O, op_info=open_chal)
-        self.pcs_verifier.verify_opening(op=proof.opening_z, cm=proof.z_cm, z=eval_chal, s=proof.eval_z, op_info=open_chal)
-        self.pcs_verifier.verify_opening(op=proof.opening_z_prime, cm=proof.z_cm, z=(self.mult_subgroup[0] * eval_chal), s=proof.eval_z_prime, op_info=open_chal)
-        self.pcs_verifier.verify_opening(op=proof.opening_T, cm=proof.T_cm, z = eval_chal, s=proof.eval_T, op_info=open_chal)
+        self.pcs_verifier.verify_opening(op=proof.f_L_op, cm=proof.f_L_cm, z=eval_chal, s=proof.f_L_eval, op_info=open_chal)
+        self.pcs_verifier.verify_opening(op=proof.f_R_op, cm=proof.f_R_cm, z=eval_chal, s=proof.f_R_eval, op_info=open_chal)
+        self.pcs_verifier.verify_opening(op=proof.f_O_op, cm=proof.f_O_cm, z=eval_chal, s=proof.f_O_eval, op_info=open_chal)
+        self.pcs_verifier.verify_opening(op=proof.Z_op, cm=proof.Z_cm, z=eval_chal, s=proof.Z_eval, op_info=open_chal)
+        self.pcs_verifier.verify_opening(op=proof.Z_shift_op, cm=proof.Z_shift_cm, z=eval_chal, s=proof.Z_shift_eval, op_info=open_chal)
+        self.pcs_verifier.verify_opening(op=proof.T_op, cm=proof.T_cm, z = eval_chal, s=proof.T_eval, op_info=open_chal)
 
-        # Compute F1
+        # ---------- Compute evaulation of F_1 ----------
         L_1 = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=0, field_class=self.field_class)
-        eval_F_1 = L_1(eval_chal) * (proof.eval_z - self.field_class.one())
+        F_1_eval = L_1(eval_chal) * (proof.Z_eval - self.field_class.one())
 
-        # Compute F2
-        eval_f_prime = (proof.eval_f_L + beta * self.preprocessed_input.Sid1(eval_chal) + gamma) * \
-            (proof.eval_f_R + beta * self.preprocessed_input.Sid2(eval_chal) + gamma) * \
-            (proof.eval_f_O + beta * self.preprocessed_input.Sid3(eval_chal) + gamma) 
-        eval_g_prime = (proof.eval_f_L + beta * self.preprocessed_input.S1(eval_chal) + gamma) * \
-            (proof.eval_f_R + beta * self.preprocessed_input.S2(eval_chal) + gamma) * \
-            (proof.eval_f_O + beta * self.preprocessed_input.S3(eval_chal) + gamma) 
-        eval_F_2 = proof.eval_z * eval_f_prime - eval_g_prime * proof.eval_z_prime
+        # ---------- Compute evaulation of F_2 ----------
+        f_prime_eval = (proof.f_L_eval + beta * self.preprocessed_input.Sid1(eval_chal) + gamma) * \
+            (proof.f_R_eval + beta * self.preprocessed_input.Sid2(eval_chal) + gamma) * \
+            (proof.f_O_eval + beta * self.preprocessed_input.Sid3(eval_chal) + gamma) 
+        g_prime_eval = (proof.f_L_eval + beta * self.preprocessed_input.S1(eval_chal) + gamma) * \
+            (proof.f_R_eval + beta * self.preprocessed_input.S2(eval_chal) + gamma) * \
+            (proof.f_O_eval + beta * self.preprocessed_input.S3(eval_chal) + gamma) 
+        F_2_eval = proof.Z_eval * f_prime_eval - g_prime_eval * proof.Z_shift_eval
 
-        # Compute F3
-        PI_poly = Polynomial[FElt](coeffs=[self.field_class.zero()])
+        # ---------- Compute evaulation of F_3 ----------
+        PI = Polynomial[FElt](coeffs=[self.field_class.zero()])
         for i in range(len(public_inputs)):
             lagrange = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=i, field_class=self.field_class)
-            PI_poly += lagrange * (-public_inputs[i]) 
-        eval_F_3 = self.preprocessed_input.PqL(eval_chal) * proof.eval_f_L + \
-            self.preprocessed_input.PqR(eval_chal) * proof.eval_f_R + \
-            self.preprocessed_input.PqO(eval_chal) * proof.eval_f_O + \
-            self.preprocessed_input.PqM(eval_chal) * proof.eval_f_L * proof.eval_f_R + \
-            self.preprocessed_input.PqC(eval_chal) + PI_poly(eval_chal)
+            PI += lagrange * -public_inputs[i]
+        F_3_eval = self.preprocessed_input.PqL(eval_chal) * proof.f_L_eval + \
+            self.preprocessed_input.PqR(eval_chal) * proof.f_R_eval + \
+            self.preprocessed_input.PqO(eval_chal) * proof.f_O_eval + \
+            self.preprocessed_input.PqM(eval_chal) * proof.f_L_eval * proof.f_R_eval + \
+            self.preprocessed_input.PqC(eval_chal) + PI(eval_chal)
 
-        # Check quotient
-        Z_S_poly = Polynomial[FElt](coeffs=[self.field_class.one()])
+        # ---------- Compute evaulation of divisor polynomial Z_S ----------
+        Z_S = Polynomial[FElt](coeffs=[self.field_class.one()])
         for i in range(len(self.mult_subgroup)):
-            Z_S_poly *= Polynomial[FElt](coeffs=[-self.mult_subgroup[i], self.field_class.one()])
-        eval_Z_S = Z_S_poly(eval_chal)
+            Z_S *= Polynomial[FElt](coeffs=[-self.mult_subgroup[i], self.field_class.one()])
+        Z_S_eval = Z_S(eval_chal)
 
-        return (a_1 * eval_F_1 + a_2 * eval_F_2 + a_3 * eval_F_3 - proof.eval_T * eval_Z_S) == self.field_class.zero()
+        # ---------- Verify quotient identity ----------
+        return (a_1 * F_1_eval + a_2 * F_2_eval + a_3 * F_3_eval - proof.T_eval * Z_S_eval) == self.field_class.zero()
 
 
 
