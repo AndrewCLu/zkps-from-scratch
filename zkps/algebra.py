@@ -30,29 +30,12 @@ FElt = TypeVar('FElt', bn128_FR, bls12_381_FR)
 class Polynomial(Generic[FElt]):
     coeffs: List[FElt]
 
-    def __call__(self, x: FElt) -> FElt:
-        res = x.zero()
-        xs = x.one()
-        for i in range(len(self.coeffs)):
-            res += xs * self.coeffs[i]
-            xs *= x
-        
-        return res
-
-    # TODO: FFT
-    def eval_on_mult_subgroup(self, mult_subgroup: List[FElt]) -> List[FElt]:
-        res = []
-        for i in range(len(mult_subgroup)):
-            res.append(self.__call__(mult_subgroup[i]))
-        
-        return res
-
     def __add__(self, other: 'Polynomial') -> 'Polynomial':
         longer, shorter = self.coeffs, other.coeffs
         if len(self.coeffs) < len(other.coeffs):
             longer, shorter = other.coeffs, self.coeffs
         
-        new_coeffs: FElt = []
+        new_coeffs: List[FElt] = []
         for i in range(len(shorter)):
             new_coeffs.append(longer[i] + shorter[i])
         for i in range(len(shorter), len(longer)):
@@ -126,7 +109,9 @@ class Polynomial(Generic[FElt]):
                 new_coeffs.append(self.coeffs[i] / other)
             return (Polynomial[FElt](new_coeffs), Polynomial[FElt]([self.coeffs[0].zero()])) # TODO: Fix these class method calls
 
-    def __eq__(self, other: 'Polynomial') -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Polynomial):
+            return False
         if len(self.coeffs) != len(other.coeffs):
             return False
         for i in range(len(self.coeffs)):
@@ -134,6 +119,23 @@ class Polynomial(Generic[FElt]):
                 return False
 
         return True
+    
+    def __call__(self, x: FElt) -> FElt:
+        res = x.zero()
+        xs = x.one()
+        for i in range(len(self.coeffs)):
+            res += xs * self.coeffs[i]
+            xs *= x
+        
+        return res
+
+    # TODO: FFT
+    def eval_on_mult_subgroup(self, mult_subgroup: List[FElt]) -> List[FElt]:
+        res = []
+        for i in range(len(mult_subgroup)):
+            res.append(self.__call__(mult_subgroup[i]))
+        
+        return res
 
     # TODO: IFFT
     @staticmethod
@@ -144,7 +146,7 @@ class Polynomial(Generic[FElt]):
         res = Polynomial[FElt]([field_class.zero()])
         for i in range(len(domain)):
             lagrange = Polynomial.lagrange_poly(domain=domain, index=i, field_class=field_class)
-            res += Polynomial[FElt]([values[i]]) * lagrange
+            res += lagrange * values[i]
         
         return res
 
@@ -153,11 +155,17 @@ class Polynomial(Generic[FElt]):
         if index >= len(domain):
             raise Exception("Index must be within the bounds of the domain!")
 
-        res = Polynomial[FElt]([field_class.one()])
+        prod = Polynomial[FElt]([field_class.one()])
+        divisor = field_class.one()
+
         for i in range(len(domain)):
             if i != index:
-                quo, _ = Polynomial[FElt]([-domain[i], field_class.one()]) / (domain[index] - domain[i])
-                res *= quo
+                prod *= Polynomial[FElt](coeffs=[-domain[i], field_class.one()])
+                divisor *= (domain[index] - domain[i])
+
+        quo, rem = prod / divisor
+        if rem != Polynomial[FElt](coeffs=[field_class.zero()]):
+            raise Exception("Error computing lagrange polynomial!")
         
-        return res
+        return quo
         
