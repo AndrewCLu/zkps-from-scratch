@@ -29,8 +29,6 @@ class PlonkProof(Generic[FElt]):
     T_op: Opening
 
 class PlonkProver(Generic[FElt]):
-    # TODO: Maybe abstract mult_subgroup. There is a lot we assume about it here,
-        # such as the fact that it is cyclic, its generator is the first element, etc. 
     def __init__(self, pcs_prover: PCSProver[FElt], constraints: PlonkConstraints[FElt], preprocessed_input: PlonkPreprocessedInput[FElt], mult_subgroup: List[FElt], field_class: Type[FElt]) -> None:
         if not constraints.is_valid_constraint():
             raise Exception("Constraints must be valid!")
@@ -43,9 +41,11 @@ class PlonkProver(Generic[FElt]):
         self.mult_subgroup: List[FElt] = mult_subgroup
         self.field_class: Type[FElt] = field_class
         
-    def prove(self, witness: List[FElt]) -> PlonkProof[FElt]:
+    def prove(self, witness: List[FElt], public_inputs: List[FElt]) -> PlonkProof[FElt]:
         if len(witness) != self.constraints.m:
             raise Exception("Must have witness length equal to number of unique wires in constraints!")
+        if len(public_inputs) != self.constraints.l:
+            raise Exception("Must have public input length equal to number of public inputs in constraints!")
 
         transcript = Transcript[FElt](field_class=self.field_class)
 
@@ -97,12 +97,29 @@ class PlonkProver(Generic[FElt]):
         PI = Polynomial[FElt](coeffs=[self.field_class.zero()])
         for i in range(self.constraints.l):
             lagrange = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=i, field_class=self.field_class)
-            PI += lagrange * -witness[i]
+            PI += lagrange * -public_inputs[i]
         F_3 = self.preprocessed_input.PqL * f_L + \
             self.preprocessed_input.PqR * f_R + \
             self.preprocessed_input.PqO * f_O + \
             self.preprocessed_input.PqM * f_L * f_R + \
             self.preprocessed_input.PqC + PI
+
+        # ---------- Begin logging... ----------
+        # for i in range(len(self.mult_subgroup)):
+        #     print('F_1({}) = {}'.format(i, F_1(self.mult_subgroup[i])))
+        #     print('F_2({}) = {}'.format(i, F_2(self.mult_subgroup[i])))
+        #     print('F_3({}) = {}'.format(i, F_3(self.mult_subgroup[i])))
+        #     print('f_L({}) = {}'.format(i, f_L(self.mult_subgroup[i])))
+        #     print('f_R({}) = {}'.format(i, f_R(self.mult_subgroup[i])))
+        #     print('f_O({}) = {}'.format(i, f_O(self.mult_subgroup[i])))
+        #     print('q_L({}) = {}'.format(i, self.preprocessed_input.PqL(self.mult_subgroup[i])))
+        #     print('q_R({}) = {}'.format(i, self.preprocessed_input.PqR(self.mult_subgroup[i])))
+        #     print('q_O({}) = {}'.format(i, self.preprocessed_input.PqO(self.mult_subgroup[i])))
+        #     print('q_M({}) = {}'.format(i, self.preprocessed_input.PqM(self.mult_subgroup[i])))
+        #     print('q_C({}) = {}'.format(i, self.preprocessed_input.PqC(self.mult_subgroup[i])))
+        #     print('PI({}) = {}'.format(i, PI(self.mult_subgroup[i])))
+        # ---------- End logging... ----------
+        
         Z_S = Polynomial[FElt](coeffs=[self.field_class.one()])
         for i in range(len(self.mult_subgroup)):
             Z_S *= Polynomial[FElt](coeffs=[-self.mult_subgroup[i], self.field_class.one()])
