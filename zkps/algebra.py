@@ -8,6 +8,24 @@ from utils import Byteable, unsigned_int_to_bytes
 
 class bn128_FR(FQ, Byteable):
     field_modulus = bn128.curve_order
+    primitive_root = 5
+
+    @classmethod
+    def get_roots_of_unity(cls, order: int) -> List['bn128_FR']:
+        if (cls.field_modulus - 1) % order != 0:
+            raise Exception("Order of roots of unity must divide the field modulus minus 1!")
+
+        res = []
+        root = cls(cls.primitive_root) ** ((cls.field_modulus - 1) // order)
+        prod = cls.one()
+        for _ in range(order):
+            res.append(prod)
+            prod *= root
+        
+        if prod != cls.one():
+            raise Exception("Failed to compute valid roots of unity!")
+
+        return res
 
     def to_bytes(self) -> bytes:
         return unsigned_int_to_bytes(self.n)

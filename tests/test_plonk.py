@@ -18,7 +18,7 @@ def test_plonk_trivial_pcs():
         qM=[bn128_FR(0), bn128_FR(0), bn128_FR(0)], 
         qC=[bn128_FR(0), bn128_FR(0), bn128_FR(0)]
     )
-    mult_subgroup = [bn128_FR(1), bn128_FR(2), bn128_FR(3)]
+    mult_subgroup = bn128_FR.get_roots_of_unity(3)
     field_class = bn128_FR
     preprocessed_input = Preprocessor.preprocess_plonk_constraints(constraints=constraints, mult_subgroup=mult_subgroup, field_class=field_class)
 
