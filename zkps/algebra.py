@@ -1,13 +1,25 @@
-from py_ecc import bn128, bls12_381
-from py_ecc.fields.field_elements import FQ
-from py_ecc.typing import Field
+from py_ecc import (
+    bn128 as bn128_base, 
+    bls12_381 as bls12_381_base,
+)
+from py_ecc.fields import (
+    bn128_FQ as bn128_FQ_base,
+    bn128_FQ2 as bn128_FQ2_base,
+    bn128_FQ12 as bn128_FQ12_base,
+    bls12_381_FQ as bls12_381_FQ_base,
+    bls12_381_FQ2 as bls12_381_FQ2_base,
+    bls12_381_FQ12 as bls12_381_FQ12_base,
+)
+from py_ecc.fields.field_elements import FQ, FQ2, FQ12
+from py_ecc.typing import Field, Point2D
 from dataclasses import dataclass
 from typing import TypeVar, Generic, List, Type, Union, Tuple
 from copy import deepcopy
 from utils import Byteable, unsigned_int_to_bytes
+from abc import ABC, abstractmethod
 
 class bn128_FR(FQ, Byteable):
-    field_modulus = bn128.curve_order
+    field_modulus = bn128_base.curve_order
     primitive_root = 5
 
     @classmethod
@@ -30,19 +42,90 @@ class bn128_FR(FQ, Byteable):
     def to_bytes(self) -> bytes:
         return unsigned_int_to_bytes(self.n)
 
-    def to_string(self) -> str:
+    def __str__(self) -> str:
         return "{n} [{mod}]".format(n = self.n, mod = self.field_modulus)
 
 class bls12_381_FR(FQ, Byteable):
-    field_modulus = bls12_381.curve_order
+    field_modulus = bls12_381_base.curve_order
+    primitive_root = 5
+
+    @classmethod
+    def get_roots_of_unity(cls, order: int) -> List['bls12_381_FR']:
+        if (cls.field_modulus - 1) % order != 0:
+            raise Exception("Order of roots of unity must divide the field modulus minus 1!")
+
+        res = []
+        root = cls(cls.primitive_root) ** ((cls.field_modulus - 1) // order)
+        prod = cls.one()
+        for _ in range(order):
+            res.append(prod)
+            prod *= root
+        
+        if prod != cls.one():
+            raise Exception("Failed to compute valid roots of unity!")
+
+        return res
 
     def to_bytes(self) -> bytes:
         return unsigned_int_to_bytes(self.n)
 
-    def to_string(self) -> str:
+    def __str__(self) -> str:
         return "{n} [{mod}]".format(n = self.n, mod = self.field_modulus)
 
 FElt = TypeVar('FElt', bn128_FR, bls12_381_FR)
+BaseField = TypeVar('BaseField', bn128_FQ_base, bls12_381_FQ_base)
+G2Field = TypeVar('G2Field', bn128_FQ2_base, bls12_381_FQ2_base)
+GtField = TypeVar('GtField', bn128_FQ12_base, bls12_381_FQ12_base)
+
+class EllipticCurve(ABC, Generic[FElt, BaseField, G2Field, GtField]):
+    g_1: Point2D[BaseField]
+    g_2: Point2D[G2Field]
+
+    @abstractmethod
+    def add(self, p1: Point2D[BaseField], p2: Point2D[BaseField]) -> Point2D[BaseField]:
+        pass
+
+    @abstractmethod
+    def add_G_2(self, p1: Point2D[G2Field], p2: Point2D[G2Field]) -> Point2D[G2Field]:
+        pass
+
+    @abstractmethod
+    def multiply(self, p: Point2D[BaseField], n: FElt) -> Point2D[BaseField]:
+        pass
+
+    @abstractmethod
+    def multiply_G_2(self, p: Point2D[G2Field], n: FElt) -> Point2D[G2Field]:
+        pass
+
+    @abstractmethod
+    def identity(self) -> Point2D[BaseField]:
+        pass
+
+    @abstractmethod
+    def pairing(self, p: Point2D[BaseField], q: Point2D[G2Field]) -> GtField:
+        pass
+
+class bn128(EllipticCurve):
+    g_1: Point2D[bn128_FQ_base] = bn128_base.G1
+    g_2: Point2D[bn128_FQ2_base] = bn128_base.G2
+
+    def add(self, p1: Point2D[bn128_FQ_base], p2: Point2D[bn128_FQ_base]) -> Point2D[bn128_FQ_base]:
+        return bn128_base.add(p1, p2)
+    
+    def add_G_2(self, p1: Point2D[bn128_FQ2_base], p2: Point2D[bn128_FQ2_base]) -> Point2D[bn128_FQ2_base]:
+        return bn128_base.add(p1, p2)
+    
+    def multiply(self, p: Point2D[bn128_FQ_base], n: FElt) -> Point2D[bn128_FQ_base]:
+        return bn128_base.multiply(p, n.n)
+
+    def multiply_G_2(self, p: Point2D[bn128_FQ2_base], n: FElt) -> Point2D[bn128_FQ2_base]:
+        return bn128_base.multiply(p, n.n)
+    
+    def identity(self) -> Point2D[bn128_FQ_base]:
+        return None
+
+    def pairing(self, p: Point2D[bn128_FQ_base], q: Point2D[bn128_FQ2_base]) -> bn128_FQ12_base:
+        return bn128_base.bn128_pairing.pairing(q, p)
 
 @dataclass
 class Polynomial(Generic[FElt]):
@@ -65,20 +148,24 @@ class Polynomial(Generic[FElt]):
 
         return Polynomial[FElt](new_coeffs)
 
-    def __sub__(self, other: 'Polynomial') -> 'Polynomial':
-        new_coeffs: List[FElt] = []
-        for i in range(min(len(self.coeffs), len(other.coeffs))):
-            new_coeffs.append(self.coeffs[i] - other.coeffs[i])
+    def __sub__(self, other: Union[FElt, 'Polynomial']) -> 'Polynomial':
+        if isinstance(other, Polynomial):
+            new_coeffs: List[FElt] = []
+            for i in range(min(len(self.coeffs), len(other.coeffs))):
+                new_coeffs.append(self.coeffs[i] - other.coeffs[i])
 
-        if len(self.coeffs) >= len(other.coeffs):
-            for j in range(min(len(self.coeffs), len(other.coeffs)), max(len(self.coeffs), len(other.coeffs))):
-                new_coeffs.append(self.coeffs[j])
-        else:
-            for j in range(min(len(self.coeffs), len(other.coeffs)), max(len(self.coeffs), len(other.coeffs))):
-                new_coeffs.append(-other.coeffs[j])
-        
-        return Polynomial[FElt](new_coeffs)
+            if len(self.coeffs) >= len(other.coeffs):
+                for j in range(min(len(self.coeffs), len(other.coeffs)), max(len(self.coeffs), len(other.coeffs))):
+                    new_coeffs.append(self.coeffs[j])
+            else:
+                for j in range(min(len(self.coeffs), len(other.coeffs)), max(len(self.coeffs), len(other.coeffs))):
+                    new_coeffs.append(-other.coeffs[j])
             
+            return Polynomial[FElt](new_coeffs)
+        else:
+            new_coeffs = deepcopy(self.coeffs)
+            new_coeffs[0] -= other
+            return Polynomial[FElt](new_coeffs)
 
     # TODO: FFT
     def __mul__(self, other: Union[FElt, 'Polynomial']) -> 'Polynomial':
