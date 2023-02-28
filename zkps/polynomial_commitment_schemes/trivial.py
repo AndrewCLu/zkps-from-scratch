@@ -25,8 +25,8 @@ class TrivialOpening(Opening):
     value: None
 
 class TrivialProver(PCSProver, Generic[FElt]):
-    def commit(self, f: Polynomial[FElt]) -> TrivialCommitment:
-        return TrivialCommitment(value=f.coeffs)
+    def commit(self, f: Polynomial[FElt]) -> TrivialCommitment[FElt]:
+        return TrivialCommitment[FElt](value=f.coeffs)
     
     def open(self, f: Polynomial[FElt], cm: Commitment, z: FElt, s: FElt, op_info: Any) -> TrivialOpening:
         if not isinstance(cm, TrivialCommitment):

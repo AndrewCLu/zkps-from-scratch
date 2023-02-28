@@ -23,11 +23,18 @@ class TestSub:
         expected = Polynomial(coeffs=[bn128_FR(1), bn128_FR(1), bn128_FR(2), bn128_FR(-3), bn128_FR(40)])
         assert(f - g == expected)
 
-    def test_sub_by_longer_poly(self):
+    def test_sub_longer_poly(self):
         f = Polynomial(coeffs=[bn128_FR(0), bn128_FR(0), bn128_FR(1), bn128_FR(3)])
         g = Polynomial(coeffs=[bn128_FR(4), bn128_FR(0), bn128_FR(1), bn128_FR(3), bn128_FR(10)])
 
         expected = Polynomial(coeffs=[bn128_FR(-4), bn128_FR(0), bn128_FR(0), bn128_FR(0), bn128_FR(-10)])
+        assert(f - g == expected)
+    
+    def test_sub_scalar(self):
+        f = Polynomial(coeffs=[bn128_FR(1), bn128_FR(1), bn128_FR(3), bn128_FR(0), bn128_FR(40)])
+        g = bn128_FR(5)
+
+        expected = Polynomial(coeffs=[bn128_FR(-4), bn128_FR(1), bn128_FR(3), bn128_FR(0), bn128_FR(40)])
         assert(f - g == expected)
 
 class TestMul:
@@ -38,11 +45,11 @@ class TestMul:
         expected = Polynomial(coeffs=[bn128_FR(12), bn128_FR(50), bn128_FR(52), bn128_FR(5)])
         assert(f * g == expected)
 
-    def scalar_mul(self):
+    def test_mul_scalar(self):
         f = Polynomial(coeffs=[bn128_FR(1), bn128_FR(1), bn128_FR(3), bn128_FR(0), bn128_FR(40)])
         c = bn128_FR(10)
 
-        expected = f = Polynomial(coeffs=[bn128_FR(10), bn128_FR(10), bn128_FR(30), bn128_FR(0), bn128_FR(400)])
+        expected = Polynomial(coeffs=[bn128_FR(10), bn128_FR(10), bn128_FR(30), bn128_FR(0), bn128_FR(400)])
         assert(f * c == expected)
 
 class TestDiv: 

@@ -92,7 +92,7 @@ class PlonkProver(Generic[FElt]):
         a_2 = transcript.get_hash(salt=bytes(1))
         a_3 = transcript.get_hash(salt=bytes(2))
         L_1 = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=0, field_class=self.field_class)
-        F_1 = L_1 * (Z - Polynomial[FElt](coeffs=[self.field_class.one()]))
+        F_1 = L_1 * (Z - self.field_class.one())
         F_2 = Z * f_prime - g_prime * Z_shift
         PI = Polynomial[FElt](coeffs=[self.field_class.zero()])
         for i in range(self.constraints.l):
@@ -119,7 +119,7 @@ class PlonkProver(Generic[FElt]):
         #     print('q_C({}) = {}'.format(i, self.preprocessed_input.PqC(self.mult_subgroup[i])))
         #     print('PI({}) = {}'.format(i, PI(self.mult_subgroup[i])))
         # ---------- End logging... ----------
-        
+
         Z_S = Polynomial[FElt](coeffs=[self.field_class.one()])
         for i in range(len(self.mult_subgroup)):
             Z_S *= Polynomial[FElt](coeffs=[-self.mult_subgroup[i], self.field_class.one()])
