@@ -49,7 +49,7 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
         self.ec: EllipticCurve[FElt, BaseField, G2Field, GtField] = ec
         self.srs: KZGSRS = srs
 
-    def eval_poly_with_srs(self, f: Polynomial[FElt]) -> Point2D[BaseField]:
+    def __eval_poly_with_srs(self, f: Polynomial[FElt]) -> Point2D[BaseField]:
         res = self.ec.identity()
         for i in range(len(f.coeffs)):
             eval = self.ec.multiply(self.srs.G_1_elts[i], f.coeffs[i])
@@ -61,7 +61,7 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
         if len(f.coeffs) > len(self.srs.G_1_elts):
             raise Exception("Polynomial degree is greater than size of SRS!")
 
-        cm = self.eval_poly_with_srs(f)
+        cm = self.__eval_poly_with_srs(f)
         
         return KZGCommitment(value=cm)
     
@@ -72,7 +72,7 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
         quo, rem = (f - s) / Polynomial[FElt](coeffs=[-z, f.coeffs[0].one()]) # TODO: Remove reference to class through instance
         if rem != Polynomial[FElt](coeffs=[f.coeffs[0].zero()]): # TODO: Remove reference to class through instance
             raise Exception("Opening is not valid: f(z) != s")
-        op = self.eval_poly_with_srs(quo)
+        op = self.__eval_poly_with_srs(quo)
 
         return KZGOpening(value=op)
 
