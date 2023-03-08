@@ -68,7 +68,7 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
     def open(self, f: Polynomial[FElt], cm: Commitment, z: FElt, s: FElt, op_info: Any) -> KZGOpening:
         if not isinstance(cm, KZGCommitment):
             raise Exception("Wrong commitment used. Must provide a KZG commitment.")
-        
+                
         quo, rem = (f - s) / Polynomial[FElt](coeffs=[-z, f.coeffs[0].one()]) # TODO: Remove reference to class through instance
         if rem != Polynomial[FElt](coeffs=[f.coeffs[0].zero()]): # TODO: Remove reference to class through instance
             raise Exception("Opening is not valid: f(z) != s")

@@ -149,12 +149,12 @@ class PlonkProver(Generic[FElt]):
 
         # ---------- Compute opening proofs of all commitments ----------
         open_chal = transcript.get_hash()
-        f_L_op = self.pcs_prover.open(f=f_L, cm=f_L_cm, s=eval_chal, z=f_L_eval, op_info=open_chal)
-        f_R_op = self.pcs_prover.open(f=f_R, cm=f_R_cm, s=eval_chal, z=f_R_eval, op_info=open_chal)
-        f_O_op = self.pcs_prover.open(f=f_O, cm=f_O_cm, s=eval_chal, z=f_O_eval, op_info=open_chal)
-        Z_op = self.pcs_prover.open(f=Z, cm=Z_cm, s=eval_chal, z=Z_eval, op_info=open_chal)
-        Z_shift_op = self.pcs_prover.open(f=Z_shift, cm=Z_shift_cm, s=eval_chal, z=Z_shift_eval, op_info=open_chal)
-        T_op = self.pcs_prover.open(f=T, cm=T_cm, s=eval_chal, z=T_eval, op_info=open_chal)
+        f_L_op = self.pcs_prover.open(f=f_L, cm=f_L_cm, z=eval_chal, s=f_L_eval, op_info=open_chal)
+        f_R_op = self.pcs_prover.open(f=f_R, cm=f_R_cm, z=eval_chal, s=f_R_eval, op_info=open_chal)
+        f_O_op = self.pcs_prover.open(f=f_O, cm=f_O_cm, z=eval_chal, s=f_O_eval, op_info=open_chal)
+        Z_op = self.pcs_prover.open(f=Z, cm=Z_cm, z=eval_chal, s=Z_eval, op_info=open_chal)
+        Z_shift_op = self.pcs_prover.open(f=Z_shift, cm=Z_shift_cm, z=eval_chal, s=Z_shift_eval, op_info=open_chal)
+        T_op = self.pcs_prover.open(f=T, cm=T_cm, z=eval_chal, s=T_eval, op_info=open_chal)
 
         return PlonkProof[FElt](
             f_L_cm=f_L_cm,
