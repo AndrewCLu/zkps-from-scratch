@@ -211,13 +211,15 @@ class PlonkVerifier(Generic[FElt]):
         
         # ---------- Verify all polynomial commitments ----------
         # TODO: Batched evaluations
-        # TODO: Fail if any of these verification openings fail
-        self.pcs_verifier.verify_opening(op=proof.f_L_op, cm=proof.f_L_cm, z=eval_chal, s=proof.f_L_eval, op_info=open_chal)
-        self.pcs_verifier.verify_opening(op=proof.f_R_op, cm=proof.f_R_cm, z=eval_chal, s=proof.f_R_eval, op_info=open_chal)
-        self.pcs_verifier.verify_opening(op=proof.f_O_op, cm=proof.f_O_cm, z=eval_chal, s=proof.f_O_eval, op_info=open_chal)
-        self.pcs_verifier.verify_opening(op=proof.Z_op, cm=proof.Z_cm, z=eval_chal, s=proof.Z_eval, op_info=open_chal)
-        self.pcs_verifier.verify_opening(op=proof.Z_shift_op, cm=proof.Z_shift_cm, z=eval_chal, s=proof.Z_shift_eval, op_info=open_chal)
-        self.pcs_verifier.verify_opening(op=proof.T_op, cm=proof.T_cm, z = eval_chal, s=proof.T_eval, op_info=open_chal)
+        a = self.pcs_verifier.verify_opening(op=proof.f_L_op, cm=proof.f_L_cm, z=eval_chal, s=proof.f_L_eval, op_info=open_chal)
+        b = self.pcs_verifier.verify_opening(op=proof.f_R_op, cm=proof.f_R_cm, z=eval_chal, s=proof.f_R_eval, op_info=open_chal)
+        c = self.pcs_verifier.verify_opening(op=proof.f_O_op, cm=proof.f_O_cm, z=eval_chal, s=proof.f_O_eval, op_info=open_chal)
+        d = self.pcs_verifier.verify_opening(op=proof.Z_op, cm=proof.Z_cm, z=eval_chal, s=proof.Z_eval, op_info=open_chal)
+        e = self.pcs_verifier.verify_opening(op=proof.Z_shift_op, cm=proof.Z_shift_cm, z=eval_chal, s=proof.Z_shift_eval, op_info=open_chal)
+        f = self.pcs_verifier.verify_opening(op=proof.T_op, cm=proof.T_cm, z = eval_chal, s=proof.T_eval, op_info=open_chal)
+        for verified in [a,b,c,d,e,f]:
+            if not verified:
+                return False
 
         # ---------- Compute evaulation of F_1 ----------
         L_1 = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=0, field_class=self.field_class)
