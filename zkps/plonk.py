@@ -21,12 +21,7 @@ class PlonkProof(Generic[FElt]):
     Z_eval: FElt
     Z_shift_eval: FElt
     T_eval: FElt
-    f_L_op: Opening
-    f_R_op: Opening
-    f_O_op: Opening
-    Z_op: Opening
-    Z_shift_op: Opening
-    T_op: Opening
+    batch_op: Opening
 
 class PlonkProver(Generic[FElt]):
     def __init__(self, pcs_prover: PCSProver[FElt], constraints: PlonkConstraints[FElt], preprocessed_input: PlonkPreprocessedInput[FElt], mult_subgroup: List[FElt], field_class: Type[FElt]) -> None:
@@ -149,12 +144,13 @@ class PlonkProver(Generic[FElt]):
 
         # ---------- Compute opening proofs of all commitments ----------
         open_chal = transcript.get_hash()
-        f_L_op = self.pcs_prover.open(f=f_L, cm=f_L_cm, z=eval_chal, s=f_L_eval, op_info=open_chal)
-        f_R_op = self.pcs_prover.open(f=f_R, cm=f_R_cm, z=eval_chal, s=f_R_eval, op_info=open_chal)
-        f_O_op = self.pcs_prover.open(f=f_O, cm=f_O_cm, z=eval_chal, s=f_O_eval, op_info=open_chal)
-        Z_op = self.pcs_prover.open(f=Z, cm=Z_cm, z=eval_chal, s=Z_eval, op_info=open_chal)
-        Z_shift_op = self.pcs_prover.open(f=Z_shift, cm=Z_shift_cm, z=eval_chal, s=Z_shift_eval, op_info=open_chal)
-        T_op = self.pcs_prover.open(f=T, cm=T_cm, z=eval_chal, s=T_eval, op_info=open_chal)
+        batch_op = self.pcs_prover.batch_open_at_point(
+            fs=[f_L, f_R, f_O, Z, Z_shift, T],
+            cms=[f_L_cm, f_R_cm, f_O_cm, Z_cm, Z_shift_cm, T_cm],
+            z=eval_chal,
+            ss=[f_L_eval, f_R_eval, f_O_eval, Z_eval, Z_shift_eval, T_eval],
+            op_info=open_chal,
+        )
 
         return PlonkProof[FElt](
             f_L_cm=f_L_cm,
@@ -169,12 +165,7 @@ class PlonkProver(Generic[FElt]):
             Z_eval=Z_eval,
             Z_shift_eval=Z_shift_eval,
             T_eval=T_eval,
-            f_L_op=f_L_op,
-            f_R_op=f_R_op,
-            f_O_op=f_O_op,
-            Z_op=Z_op,
-            Z_shift_op=Z_shift_op,
-            T_op=T_op
+            batch_op=batch_op,
         )
 
 
@@ -210,16 +201,14 @@ class PlonkVerifier(Generic[FElt]):
         open_chal = transcript.get_hash()
         
         # ---------- Verify all polynomial commitments ----------
-        # TODO: Batched evaluations
-        a = self.pcs_verifier.verify_opening(op=proof.f_L_op, cm=proof.f_L_cm, z=eval_chal, s=proof.f_L_eval, op_info=open_chal)
-        b = self.pcs_verifier.verify_opening(op=proof.f_R_op, cm=proof.f_R_cm, z=eval_chal, s=proof.f_R_eval, op_info=open_chal)
-        c = self.pcs_verifier.verify_opening(op=proof.f_O_op, cm=proof.f_O_cm, z=eval_chal, s=proof.f_O_eval, op_info=open_chal)
-        d = self.pcs_verifier.verify_opening(op=proof.Z_op, cm=proof.Z_cm, z=eval_chal, s=proof.Z_eval, op_info=open_chal)
-        e = self.pcs_verifier.verify_opening(op=proof.Z_shift_op, cm=proof.Z_shift_cm, z=eval_chal, s=proof.Z_shift_eval, op_info=open_chal)
-        f = self.pcs_verifier.verify_opening(op=proof.T_op, cm=proof.T_cm, z = eval_chal, s=proof.T_eval, op_info=open_chal)
-        for verified in [a,b,c,d,e,f]:
-            if not verified:
-                return False
+        if not self.pcs_verifier.verify_batch_at_point(
+            op=proof.batch_op, 
+            cms=[proof.f_L_cm, proof.f_R_cm, proof.f_O_cm, proof.Z_cm, proof.Z_shift_cm, proof.T_cm], 
+            z=eval_chal, 
+            ss=[proof.f_L_eval, proof.f_R_eval, proof.f_O_eval, proof.Z_eval, proof.Z_shift_eval, proof.T_eval],
+            op_info=open_chal,
+        ):
+            return False
 
         # ---------- Compute evaulation of F_1 ----------
         L_1 = Polynomial.lagrange_poly(domain=self.mult_subgroup, index=0, field_class=self.field_class)
