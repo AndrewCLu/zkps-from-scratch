@@ -13,7 +13,7 @@ from py_ecc.fields import (
 from py_ecc.fields.field_elements import FQ, FQ2, FQ12
 from py_ecc.typing import Field, Point2D
 from dataclasses import dataclass
-from typing import TypeVar, Generic, List, Type, Union, Tuple
+from typing import TypeVar, Generic, List, Type, Union, Tuple, Any
 from copy import deepcopy
 from utils import Byteable, unsigned_int_to_bytes
 from abc import ABC, abstractmethod
@@ -132,6 +132,84 @@ class bn128(EllipticCurve):
     @classmethod
     def pairing(cls, p: Point2D[bn128_FQ_base], q: Point2D[bn128_FQ2_base]) -> bn128_FQ12_base:
         return bn128_base.bn128_pairing.pairing(q, p)
+
+class CyclicGroup(ABC):
+    value: Any
+    order: int
+
+    @abstractmethod
+    def __add__(self, other: 'CyclicGroup') -> 'CyclicGroup':
+        pass
+
+    @abstractmethod
+    def __mul__(self, other: int) -> 'CyclicGroup':
+        pass
+
+    @abstractmethod
+    def __eq__(self, other: Any) -> bool:
+        pass
+
+    @classmethod
+    @abstractmethod
+    def identity(cls) -> 'CyclicGroup':
+        pass
+
+    @classmethod
+    @abstractmethod
+    def generator(cls) -> 'CyclicGroup':
+        pass
+
+@dataclass
+class bn128Group(CyclicGroup):
+    value: int
+    order: int = bn128_base.curve_order
+
+    def __add__(self, other: 'CyclicGroup') -> 'bn128Group':
+        if not isinstance(other, bn128Group):
+            raise Exception('Can only add bn128Group elements!')
+        return bn128Group((self.value + other.value) % self.order)
+    
+    def __mul__(self, other: int) -> 'bn128Group':
+        return bn128Group((self.value * other) % self.order)
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, bn128Group):
+            raise Exception('Can only compare bn128Group elements!')
+        return self.value == other.value
+    
+    @classmethod
+    def identity(cls) -> 'bn128Group':
+        return bn128Group(0)
+
+    @classmethod
+    def generator(cls) -> 'bn128Group':
+        return bn128Group(1)
+
+@dataclass
+class bls12_381Group(CyclicGroup):
+    value: int
+    order: int = bls12_381_base.curve_order
+
+    def __add__(self, other: 'CyclicGroup') -> 'bls12_381Group':
+        if not isinstance(other, bls12_381Group):
+            raise Exception('Can only add bls12_381Group elements!')
+        return bls12_381Group((self.value + other.value) % self.order)
+    
+    def __mul__(self, other: int) -> 'bls12_381Group':
+        return bls12_381Group((self.value * other) % self.order)
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, bls12_381Group):
+            raise Exception('Can only compare bls12_381Group elements!')
+        return self.value == other.value
+    
+    @classmethod
+    def identity(cls) -> 'bls12_381Group':
+        return bls12_381Group(0)
+
+    @classmethod
+    def generator(cls) -> 'bls12_381Group':
+        return bls12_381Group(1)
 
 @dataclass
 class Polynomial(Generic[FElt]):
