@@ -14,6 +14,7 @@ class KZGSRS(Generic[FElt, BaseField, G2Field, GtField]):
     G_2_elts: List[Point2D[G2Field]]
 
     @staticmethod
+    # This is not secure since we are generating deterministically
     def trusted_setup(d: int, ec: EllipticCurve[FElt, BaseField, G2Field, GtField], field_class: Type[FElt]) -> 'KZGSRS':
         s: FElt = field_class(random.randint(1, field_class.field_modulus - 1))
         G_1_elts = [ec.g_1] 

@@ -11,16 +11,19 @@ def unsigned_int_to_bytes(x: int) -> bytes:
 def unsigned_int_from_bytes(xbytes: bytes) -> int:
     return int.from_bytes(xbytes, 'big')
 
-def is_power_of_2(n: int) -> bool:
+# Returns -1 if n is not a power of 2
+def get_power_of_2(n: int) -> int:
     curr = 1
+    power = 0
     while True:
         if curr == n:
-            return True
+            return power
         if curr > n:
-            return False
+            return -1
         curr *= 2
+        power += 1
     
-def get_smallest_power_of_2_greater_than_n(n: int) -> int:
+def nearest_larger_power_of_2(n: int) -> int:
     curr = 1
     while curr < n:
         curr *= 2

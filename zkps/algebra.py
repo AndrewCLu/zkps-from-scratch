@@ -159,6 +159,10 @@ class CyclicGroup(ABC):
     def generator(cls) -> 'CyclicGroup':
         pass
 
+    @abstractmethod
+    def to_bytes(self) -> bytes:
+        pass
+
 @dataclass
 class bn128Group(CyclicGroup):
     value: int
@@ -185,6 +189,9 @@ class bn128Group(CyclicGroup):
     def generator(cls) -> 'bn128Group':
         return bn128Group(1)
 
+    def to_bytes(self) -> bytes:
+        return unsigned_int_to_bytes(self.value)
+
 @dataclass
 class bls12_381Group(CyclicGroup):
     value: int
@@ -210,6 +217,11 @@ class bls12_381Group(CyclicGroup):
     @classmethod
     def generator(cls) -> 'bls12_381Group':
         return bls12_381Group(1)
+
+    def to_bytes(self) -> bytes:
+        return unsigned_int_to_bytes(self.value)
+
+CyclicGroupElt = TypeVar('CyclicGroupElt', bn128Group, bls12_381Group)
 
 @dataclass
 class Polynomial(Generic[FElt]):
