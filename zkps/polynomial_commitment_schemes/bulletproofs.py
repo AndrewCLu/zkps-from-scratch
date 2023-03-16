@@ -134,7 +134,6 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         transcript.append(s)
         u_randomness = transcript.get_hash()
         U = self.crs.G_elts[0].generator() * u_randomness # TODO: Remove class reference from instance 
-        P_prime = cm.value + (U * s)
 
         a_vec = f.coeffs
         d = nearest_larger_power_of_2(len(a_vec))
@@ -148,7 +147,6 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
 
         L_js = []
         R_js = []
-        Q = P_prime
         r_prime = self.r
         for _ in range(k):
             a_lo, a_hi = self.__split_lo_hi(a_vec)
@@ -174,7 +172,6 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
             b_vec = self.__add_vec(self.__scale_vec(b_lo, u_j_inv), self.__scale_vec(b_hi, u_j))
             g_vec = self.__add_vec(self.__scale_vec(g_lo, u_j_inv), self.__scale_vec(g_hi, u_j))
             r_prime += l_j * u_j * u_j + r_j * u_j_inv * u_j_inv
-            Q += L_j * (u_j * u_j) + R_j * (u_j_inv * u_j_inv)
         
         if len(a_vec) != 1 or len(b_vec) != 1 or len(g_vec) != 1:
             raise Exception('Failed to compute final values of a, b, g!')
@@ -259,17 +256,22 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
         u_randomness = transcript.get_hash()
         U = self.crs.G_elts[0].generator() * u_randomness # TODO: Remove class reference from instance 
         P_prime = cm.value + (U * s)
+
         L_js = op.value.L_js
         R_js = op.value.R_js
-        u_js = []
-        u_js_inv = []
         k = len(L_js)
+        u_js: List[FElt] = []
+        u_js_inv: List[FElt] = []
+        Q = P_prime
         for i in range(k):
             transcript.append(L_js[i])
             transcript.append(R_js[i])
             u_j = transcript.get_hash()
-            u_js.append(u_j)
-            u_js_inv.append(self.field_class.one() / u_j)
+            u_j_inv = self.field_class.one() / u_j
+            # u_js are computed in reverse order 
+            u_js.insert(0, u_j)
+            u_js_inv.insert(0, u_j_inv)
+            Q += L_js[i] * (u_j * u_j) + R_js[i] * (u_j_inv * u_j_inv)
         R = op.value.R
         transcript.append(R)
 
@@ -295,7 +297,7 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
 
         # ---------- Verify Schnorr proof using randomness from transcript ----------
         c = transcript.get_hash()
-        LHS = (P_prime * c) + R
+        LHS = (Q * c) + R
         H = self.crs.H
         z_1 = op.value.z_1
         z_2 = op.value.z_2
