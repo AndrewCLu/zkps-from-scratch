@@ -136,7 +136,7 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         for _ in range(d - len(a_vec)):
             a_vec.append(self.field_class.zero())
         g_vec = self.crs.G_elts[:d]
-        b_vec = [f.coeffs[0].one()]
+        b_vec = [self.field_class.one()]
         for _ in range(d - 1):
             b_vec.append(b_vec[-1] * z)
 
@@ -192,3 +192,64 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
             )
         )
 
+class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
+    def __init__(self, crs: BulletproofsCRS, field_class: Type[FElt]):
+        self.crs: BulletproofsCRS = crs
+        self.field_class: Type[FElt] = field_class
+
+    def verify_opening(self, op: Opening, cm: Commitment, z: FElt, s: FElt, op_info: Any) -> bool:
+        if not isinstance(op, BulletproofsOpening):
+            raise Exception('Must provide Bulletproofs opening to Bulletproofs verifier!')
+        if not isinstance(cm, BulletproofsCommitment):
+            raise Exception('Must provide Bulletproofs commitment to Bulletproofs verifier!')
+
+        # ---------- Re-execute transcript based on proof values ----------
+        transcript = Transcript(field_class=self.field_class)
+        transcript.append(cm)
+        transcript.append(z)
+        transcript.append(s)
+        u_randomness = transcript.get_hash()
+        U = self.crs.G_elts[0].generator() * u_randomness.n # TODO: Remove class reference from instance 
+        P_prime = cm.value + (U * s.n)
+        L_js = op.value.L_js
+        R_js = op.value.R_js
+        u_js = []
+        u_js_inv = []
+        k = len(L_js)
+        for i in range(k):
+            transcript.append(L_js[i])
+            transcript.append(R_js[i])
+            u_j = transcript.get_hash()
+            u_js.append(u_j)
+            u_js_inv.append(self.field_class.one() / u_j)
+        R = op.value.R
+        transcript.append(R)
+
+        # ---------- Compute derived G and b values ----------
+        d = 2 ** k
+        g_vec = self.crs.G_elts[:d]
+        b_vec = [self.field_class.one()]
+        for _ in range(d - 1):
+            b_vec.append(b_vec[-1] * z)
+        s_vec = []
+        for i in range(d):
+            ind = i
+            prod = self.field_class.one()
+            for j in range(k):
+                if ind % 2 == 0:
+                    prod *= u_js_inv[j]
+                else:
+                    prod *= u_js[j]
+                ind //= 2
+        g = g_vec * s_vec
+        b = b_vec * s_vec
+
+        # ---------- Verify Schnorr proof using randomness from transcript ----------
+        c = transcript.get_hash()
+        LHS = (P_prime * c) + R
+        H = self.crs.H
+        z_1 = op.value.z_1
+        z_2 = op.value.z_2
+        RHS = (g + (U * b)) * z_1 + H * z_2 
+
+        return LHS == RHS
