@@ -173,8 +173,13 @@ class bn128Group(CyclicGroup):
             raise Exception('Can only add bn128Group elements!')
         return bn128Group((self.value + other.value) % self.order)
     
-    def __mul__(self, other: int) -> 'bn128Group':
-        return bn128Group((self.value * other) % self.order)
+    def __mul__(self, other: Union[int, FQ]) -> 'bn128Group':
+        if isinstance(other, int):
+            return bn128Group((self.value * other) % self.order)
+        elif isinstance(other, FQ):
+            return bn128Group((self.value * other.n) % self.order)
+        else:
+            raise Exception('Can only multiply bn128Group elements by ints or field elements!')
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, bn128Group):
@@ -202,8 +207,13 @@ class bls12_381Group(CyclicGroup):
             raise Exception('Can only add bls12_381Group elements!')
         return bls12_381Group((self.value + other.value) % self.order)
     
-    def __mul__(self, other: int) -> 'bls12_381Group':
-        return bls12_381Group((self.value * other) % self.order)
+    def __mul__(self, other: Union[int, FQ]) -> 'bls12_381Group':
+        if isinstance(other, int):
+            return bls12_381Group((self.value * other) % self.order)
+        elif isinstance(other, FQ):
+            return bls12_381Group((self.value * other.n) % self.order)
+        else:
+            raise Exception('Can only multiply bls12_381Group elements by ints or field elements!')
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, bls12_381Group):

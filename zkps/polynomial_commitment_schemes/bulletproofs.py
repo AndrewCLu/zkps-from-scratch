@@ -43,23 +43,29 @@ class BulletproofsOpeningProof(Generic[FElt, CyclicGroupElt]):
 class BulletproofsOpening(Opening, Generic[FElt, CyclicGroupElt]):
     value: BulletproofsOpeningProof
 
+@dataclass
+class BulletproofsBatchOpening(Opening):
+    value: List[BulletproofsOpeningProof]
+
 class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
     def __init__(self, crs: BulletproofsCRS, field_class: Type[FElt]):
         self.crs: BulletproofsCRS = crs
         self.field_class: Type[FElt] = field_class
         self.r: FElt = self.field_class(1234) # Fix randomness for consistent testing 
 
-    # TODO: Better algorithms for MSM    
+    # TODO: Better algorithms for MSM 
+    # TODO: Move MSM into utils    
     def __multiScalarMultiplication(self, scalars: List[FElt], groupElts: List[CyclicGroupElt]) -> CyclicGroupElt:
         if len(scalars) != len(groupElts):
             raise Exception('Length of scalars must be the same as those of group elements!')
 
         res = groupElts[0].identity() # TODO: Remove class reference from instance
         for i in range(len(scalars)):
-            res += groupElts[i] * scalars[i].n
+            res += groupElts[i] * scalars[i]
         
         return res
 
+    # TODO: Move into utils
     def __scalarDotProduct(self, a: List[FElt], b: List[FElt]) -> FElt:
         if len(a) != len(b):
             raise Exception('Length of both scalar vectors must be the same!')
@@ -113,7 +119,7 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         for _ in range(d - len(a_vec)):
             a_vec.append(self.field_class.zero()) 
         
-        randomness = self.crs.H * self.r.n
+        randomness = self.crs.H * self.r
         return BulletproofsCommitment(
             value=self.__multiScalarMultiplication(scalars=a_vec, groupElts=self.crs.G_elts[:d]) + randomness
         )
@@ -127,8 +133,8 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         transcript.append(z)
         transcript.append(s)
         u_randomness = transcript.get_hash()
-        U = self.crs.G_elts[0].generator() * u_randomness.n # TODO: Remove class reference from instance 
-        P_prime = cm.value + (U * s.n)
+        U = self.crs.G_elts[0].generator() * u_randomness # TODO: Remove class reference from instance 
+        P_prime = cm.value + (U * s)
 
         a_vec = f.coeffs
         d = nearest_larger_power_of_2(len(a_vec))
@@ -152,10 +158,10 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
             l_j = transcript.get_hash(salt=bytes(1))
             r_j = transcript.get_hash(salt=bytes(2))
             L_j = self.__multiScalarMultiplication(scalars=a_lo, groupElts=g_hi) + \
-                self.crs.H * l_j.n + \
+                self.crs.H * l_j + \
                 U * self.__scalarDotProduct(a=a_lo, b=b_hi)
             R_j = self.__multiScalarMultiplication(scalars=a_hi, groupElts=g_lo) + \
-                self.crs.H * r_j.n + \
+                self.crs.H * r_j + \
                 U * self.__scalarDotProduct(a=a_hi, b=b_lo)
             L_js.append(L_j)
             R_js.append(R_j)
@@ -170,9 +176,11 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
             r_prime += l_j * u_j * u_j + r_j * u_j_inv * u_j_inv
             Q += L_j * (u_j * u_j) + R_j * (u_j_inv * u_j_inv)
         
-        a = a_vec
-        b = b_vec
-        g = g_vec
+        if len(a_vec) != 1 or len(b_vec) != 1 or len(g_vec) != 1:
+            raise Exception('Failed to compute final values of a, b, g!')
+        a = a_vec[0]
+        b = b_vec[0]
+        g = g_vec[0]
         r_1 = transcript.get_hash(salt=bytes(1))
         r_2 = transcript.get_hash(salt=bytes(2))
         R = (g + (U * b)) * r_1 + self.crs.H * r_2
@@ -192,10 +200,50 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
             )
         )
 
+    def batch_open_at_point(self, fs: List[Polynomial[FElt]], cms: List[Commitment], z: FElt, ss: List[FElt], op_info: Any) -> Opening:
+        batch_size = len(fs)
+        if len(cms) != batch_size or len(ss) != batch_size:
+            raise Exception('All parameters must have length equal to batch size!')
+        
+        batch_ops = []
+        for i in range(batch_size):
+            if not isinstance(cms[i], BulletproofsCommitment):
+                raise Exception("Wrong commitment used. Must provide a Bulletproofs commitment.")
+
+            op = self.open(f=fs[i], cm=cms[i], z=z, s=ss[i], op_info=op_info)
+            batch_ops.append(op.value)
+        
+        return BulletproofsBatchOpening(
+            value=batch_ops
+        )
+
 class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
     def __init__(self, crs: BulletproofsCRS, field_class: Type[FElt]):
         self.crs: BulletproofsCRS = crs
         self.field_class: Type[FElt] = field_class
+
+    # TODO: Better algorithms for MSM 
+    # TODO: Move MSM into utils    
+    def __multiScalarMultiplication(self, scalars: List[FElt], groupElts: List[CyclicGroupElt]) -> CyclicGroupElt:
+        if len(scalars) != len(groupElts):
+            raise Exception('Length of scalars must be the same as those of group elements!')
+
+        res = groupElts[0].identity() # TODO: Remove class reference from instance
+        for i in range(len(scalars)):
+            res += groupElts[i] * scalars[i]
+        
+        return res
+
+    # TODO: Move into utils
+    def __scalarDotProduct(self, a: List[FElt], b: List[FElt]) -> FElt:
+        if len(a) != len(b):
+            raise Exception('Length of both scalar vectors must be the same!')
+
+        res = self.field_class.zero() 
+        for i in range(len(a)):
+            res += a[i] * b[i]
+        
+        return res
 
     def verify_opening(self, op: Opening, cm: Commitment, z: FElt, s: FElt, op_info: Any) -> bool:
         if not isinstance(op, BulletproofsOpening):
@@ -209,8 +257,8 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
         transcript.append(z)
         transcript.append(s)
         u_randomness = transcript.get_hash()
-        U = self.crs.G_elts[0].generator() * u_randomness.n # TODO: Remove class reference from instance 
-        P_prime = cm.value + (U * s.n)
+        U = self.crs.G_elts[0].generator() * u_randomness # TODO: Remove class reference from instance 
+        P_prime = cm.value + (U * s)
         L_js = op.value.L_js
         R_js = op.value.R_js
         u_js = []
@@ -231,7 +279,7 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
         b_vec = [self.field_class.one()]
         for _ in range(d - 1):
             b_vec.append(b_vec[-1] * z)
-        s_vec = []
+        s_vec: List[FElt] = []
         for i in range(d):
             ind = i
             prod = self.field_class.one()
@@ -241,8 +289,9 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
                 else:
                     prod *= u_js[j]
                 ind //= 2
-        g = g_vec * s_vec
-        b = b_vec * s_vec
+            s_vec.append(prod)
+        g = self.__multiScalarMultiplication(scalars=s_vec, groupElts=g_vec)
+        b = self.__scalarDotProduct(a=s_vec, b=b_vec)
 
         # ---------- Verify Schnorr proof using randomness from transcript ----------
         c = transcript.get_hash()
@@ -253,3 +302,22 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
         RHS = (g + (U * b)) * z_1 + H * z_2 
 
         return LHS == RHS
+
+    def verify_batch_at_point(self, op: Opening, cms: List[Commitment], z: FElt, ss: List[FElt], op_info: Any) -> bool:
+        if not isinstance(op, BulletproofsBatchOpening):
+            raise Exception('Wrong opening used. Must provide a Bulletproofs Batch opening.')
+        
+        batch_size = len(cms)
+        if len(ss) != batch_size:
+            raise Exception('All parameters must have length equal to batch size!')
+
+        for i in range(batch_size):
+            if not isinstance(cms[i], BulletproofsCommitment):
+                raise Exception('Wrong commitment used. Must provide a Bulletproofs commitment.')
+            
+            op_i = BulletproofsOpening(value=op.value[i])
+            valid_op = self.verify_opening(op=op_i, cm=cms[i], z=z, s=ss[i], op_info=op_info)
+            if not valid_op: 
+                return False
+        
+        return True
