@@ -1,5 +1,5 @@
 from constraints import PlonkConstraints
-from algebra import bn128_FR
+from algebra.field import bn128_FR
 
 class TestConstraints():
     def test_valid_constraints(self):

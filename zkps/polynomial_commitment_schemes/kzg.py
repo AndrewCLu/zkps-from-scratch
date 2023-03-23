@@ -4,7 +4,9 @@ import random
 from typing import Generic, Any, List, Type
 from py_ecc.typing import Point2D
 from dataclasses import dataclass
-from algebra import FElt, Polynomial, EllipticCurve, BaseField, G2Field, GtField
+from algebra.field import FElt
+from algebra.polynomial import Polynomial
+from algebra.pairing import EllipticCurve, BaseField, G2Field, GtField
 from polynomial_commitment_schemes.pcs import Commitment, Opening, PCSProver, PCSVerifier
 from utils import unsigned_int_to_bytes
 

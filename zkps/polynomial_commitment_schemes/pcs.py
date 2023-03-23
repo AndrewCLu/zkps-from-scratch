@@ -1,7 +1,8 @@
-from typing import Generic, Any
+from typing import Generic, Any, List
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from algebra import FElt, Polynomial, List
+from algebra.field import FElt
+from algebra.polynomial import Polynomial
 from utils import Byteable
 
 @dataclass

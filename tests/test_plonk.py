@@ -2,7 +2,9 @@ from plonk import PlonkProver, PlonkVerifier
 from polynomial_commitment_schemes.trivial import TrivialProver, TrivialVerifier
 from polynomial_commitment_schemes.kzg import KZGProver, KZGVerifier, KZGSRS
 from polynomial_commitment_schemes.bulletproofs import BulletproofsCRS, BulletproofsProver, BulletproofsVerifier
-from algebra import bn128_FR, bn128, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base, bn128Group
+from algebra.field import bn128_FR
+from algebra.pairing import bn128, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base
+from algebra.cyclic_group import bn128Group
 from constraints import PlonkConstraints
 from preprocessor import Preprocessor
 

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Generic, List, Type
-from algebra import FElt, Polynomial
+from algebra.field import FElt
+from algebra.polynomial import Polynomial
 from constraints import PlonkConstraints
 
 @dataclass

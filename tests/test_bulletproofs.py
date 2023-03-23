@@ -1,5 +1,7 @@
 from polynomial_commitment_schemes.bulletproofs import BulletproofsProver, BulletproofsVerifier, BulletproofsCRS
-from algebra import bn128Group, bn128_FR, Polynomial
+from algebra.field import bn128_FR
+from algebra.polynomial import Polynomial
+from algebra.cyclic_group import bn128Group
 
 class TestBulletproofsPCS():
     field_class = bn128_FR

@@ -1,6 +1,8 @@
 from typing import Generic, List, Type, Tuple, Any, Union, overload
 from dataclasses import dataclass
-from algebra import FElt, CyclicGroupElt, Polynomial
+from algebra.field import FElt
+from algebra.cyclic_group import CyclicGroupElt
+from algebra.polynomial import Polynomial
 from polynomial_commitment_schemes.pcs import Commitment, Opening, PCSProver, PCSVerifier
 from utils import nearest_larger_power_of_2, get_power_of_2
 from transcript import Transcript
@@ -11,7 +13,7 @@ class BulletproofsCRS(Generic[FElt, CyclicGroupElt]):
     H: CyclicGroupElt
 
     @staticmethod
-    # This is not secure since we are generating detrerministically 
+    # This is not secure since we are generating deterministically 
     def common_setup(d: int, cyclic_group: Type[CyclicGroupElt]) -> 'BulletproofsCRS':
         G_elts = []
         g = cyclic_group.generator()

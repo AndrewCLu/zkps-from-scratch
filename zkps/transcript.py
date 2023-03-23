@@ -1,5 +1,5 @@
 from typing import Generic, List, Optional, Type
-from algebra import FElt
+from algebra.field import FElt
 from Crypto.Hash import keccak
 from utils import Byteable
 

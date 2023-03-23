@@ -1,5 +1,6 @@
 from polynomial_commitment_schemes.trivial import TrivialProver, TrivialVerifier, TrivialOpening
-from algebra import bn128_FR, Polynomial
+from algebra.field import bn128_FR
+from algebra.polynomial import Polynomial
 
 class TestTrivialPCS():
     prover = TrivialProver()

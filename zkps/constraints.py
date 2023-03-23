@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Generic
-from algebra import FElt
+from algebra.field import FElt
 
 @dataclass
 class PlonkConstraints(Generic[FElt]):

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Generic, Any, Type
-from algebra import FElt, Polynomial
+from algebra.field import FElt
+from algebra.polynomial import Polynomial
 from constraints import PlonkConstraints
 from preprocessor import PlonkPreprocessedInput
 from polynomial_commitment_schemes.pcs import PCSProver, PCSVerifier, Commitment, Opening

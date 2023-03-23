@@ -2,7 +2,8 @@ from __future__ import absolute_import
 
 from typing import Generic, Any, List, cast
 from dataclasses import dataclass
-from algebra import FElt, Polynomial
+from algebra.field import FElt
+from algebra.polynomial import Polynomial
 from polynomial_commitment_schemes.pcs import Commitment, Opening, PCSProver, PCSVerifier
 from utils import Byteable
 

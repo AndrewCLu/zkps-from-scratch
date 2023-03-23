@@ -1,4 +1,6 @@
-from algebra import bn128_FR, Polynomial, bn128Group, bls12_381Group
+from algebra.field import bn128_FR
+from algebra.polynomial import Polynomial
+from algebra.cyclic_group import bn128Group, bls12_381Group
 
 class TestCyclicGroup:
     groups = [bn128Group, bls12_381Group]

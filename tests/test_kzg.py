@@ -1,5 +1,7 @@
 from polynomial_commitment_schemes.kzg import KZGProver, KZGVerifier, KZGSRS
-from algebra import bn128, bn128_FR, Polynomial
+from algebra.field import bn128_FR
+from algebra.polynomial import Polynomial
+from algebra.pairing import bn128
 
 class TestKZGPCS():
     field_class = bn128_FR
