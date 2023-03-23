@@ -74,3 +74,31 @@ class bn128(EllipticCurve):
     @classmethod
     def pairing(cls, p: Point2D[bn128_FQ_base], q: Point2D[bn128_FQ2_base]) -> bn128_FQ12_base:
         return bn128_base.bn128_pairing.pairing(q, p)
+
+class bls12_381(EllipticCurve):
+    g_1: Point2D[bls12_381_FQ_base] = bls12_381_base.G1
+    g_2: Point2D[bls12_381_FQ2_base] = bls12_381_base.G2
+
+    @classmethod
+    def add(cls, p1: Point2D[bls12_381_FQ_base], p2: Point2D[bls12_381_FQ_base]) -> Point2D[bls12_381_FQ_base]:
+        return bls12_381_base.add(p1, p2)
+    
+    @classmethod
+    def add_G_2(cls, p1: Point2D[bls12_381_FQ2_base], p2: Point2D[bls12_381_FQ2_base]) -> Point2D[bls12_381_FQ2_base]:
+        return bls12_381_base.add(p1, p2)
+    
+    @classmethod
+    def multiply(cls, p: Point2D[bls12_381_FQ_base], n: FElt) -> Point2D[bls12_381_FQ_base]:
+        return bls12_381_base.multiply(p, n.n)
+
+    @classmethod
+    def multiply_G_2(cls, p: Point2D[bls12_381_FQ2_base], n: FElt) -> Point2D[bls12_381_FQ2_base]:
+        return bls12_381_base.multiply(p, n.n)
+    
+    @classmethod
+    def identity(cls) -> Point2D[bls12_381_FQ_base]:
+        return None
+
+    @classmethod
+    def pairing(cls, p: Point2D[bls12_381_FQ_base], q: Point2D[bls12_381_FQ2_base]) -> bls12_381_FQ12_base:
+        return bls12_381_base.bls12_381_pairing.pairing(q, p)
