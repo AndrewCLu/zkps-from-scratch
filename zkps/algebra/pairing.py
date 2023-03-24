@@ -19,7 +19,7 @@ BaseField = TypeVar('BaseField', bn128_FQ_base, bls12_381_FQ_base)
 G2Field = TypeVar('G2Field', bn128_FQ2_base, bls12_381_FQ2_base)
 GtField = TypeVar('GtField', bn128_FQ12_base, bls12_381_FQ12_base)
 
-class EllipticCurve(ABC, Generic[FElt, BaseField, G2Field, GtField]):
+class Pairing(ABC, Generic[FElt, BaseField, G2Field, GtField]):
     g_1: Point2D[BaseField]
     g_2: Point2D[G2Field]
 
@@ -47,7 +47,7 @@ class EllipticCurve(ABC, Generic[FElt, BaseField, G2Field, GtField]):
     def pairing(self, p: Point2D[BaseField], q: Point2D[G2Field]) -> GtField:
         pass
 
-class bn128(EllipticCurve):
+class bn128_pairing(Pairing):
     g_1: Point2D[bn128_FQ_base] = bn128_base.G1
     g_2: Point2D[bn128_FQ2_base] = bn128_base.G2
 
@@ -75,7 +75,7 @@ class bn128(EllipticCurve):
     def pairing(cls, p: Point2D[bn128_FQ_base], q: Point2D[bn128_FQ2_base]) -> bn128_FQ12_base:
         return bn128_base.bn128_pairing.pairing(q, p)
 
-class bls12_381(EllipticCurve):
+class bls12_381_pairing(Pairing):
     g_1: Point2D[bls12_381_FQ_base] = bls12_381_base.G1
     g_2: Point2D[bls12_381_FQ2_base] = bls12_381_base.G2
 

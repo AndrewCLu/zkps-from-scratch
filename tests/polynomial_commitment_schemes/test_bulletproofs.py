@@ -1,11 +1,11 @@
 from polynomial_commitment_schemes.bulletproofs import BulletproofsProver, BulletproofsVerifier, BulletproofsCRS
 from algebra.field import bn128_FR
 from algebra.polynomial import Polynomial
-from algebra.cyclic_group import bn128Group
+from algebra.cyclic_group import bn128_group
 
 class TestBulletproofsPCS():
     field_class = bn128_FR
-    cyclic_group = bn128Group
+    cyclic_group = bn128_group
     crs = BulletproofsCRS.common_setup(10, cyclic_group)
     prover = BulletproofsProver(crs, field_class)
     verifier = BulletproofsVerifier(crs, field_class)

@@ -1,14 +1,14 @@
 from polynomial_commitment_schemes.kzg import KZGProver, KZGVerifier, KZGSRS
 from algebra.field import bn128_FR
 from algebra.polynomial import Polynomial
-from algebra.pairing import bn128
+from algebra.pairing import bn128_pairing
 
 class TestKZGPCS():
     field_class = bn128_FR
-    ec = bn128
-    srs = KZGSRS.trusted_setup(10, ec, field_class)
-    prover = KZGProver(ec, srs)
-    verifier = KZGVerifier(ec, srs)
+    pairing = bn128_pairing
+    srs = KZGSRS.trusted_setup(10, pairing, field_class)
+    prover = KZGProver(pairing, srs)
+    verifier = KZGVerifier(pairing, srs)
     f = Polynomial(coeffs=[bn128_FR(1), bn128_FR(2), bn128_FR(3)])
     z = bn128_FR(4)
     s = bn128_FR(57)

@@ -3,8 +3,8 @@ from polynomial_commitment_schemes.trivial import TrivialProver, TrivialVerifier
 from polynomial_commitment_schemes.kzg import KZGProver, KZGVerifier, KZGSRS
 from polynomial_commitment_schemes.bulletproofs import BulletproofsCRS, BulletproofsProver, BulletproofsVerifier
 from algebra.field import bn128_FR
-from algebra.pairing import bn128, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base
-from algebra.cyclic_group import bn128Group
+from algebra.pairing import bn128_pairing, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base
+from algebra.cyclic_group import bn128_group
 from constraints import PlonkConstraints
 from preprocessor import Preprocessor
 
@@ -40,10 +40,10 @@ class TestPlonk():
         assert(valid_proof == True)
 
     def test_plonk_kzg(self):
-        ec = bn128()
-        srs = KZGSRS.trusted_setup(d=10, ec=ec, field_class=self.field_class)
-        pcs_prover = KZGProver[bn128_FR, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base](ec=ec, srs=srs)
-        pcs_verifier = KZGVerifier[bn128_FR, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base](ec=ec, srs=srs)
+        pairing = bn128_pairing()
+        srs = KZGSRS.trusted_setup(d=10, pairing=pairing, field_class=self.field_class)
+        pcs_prover = KZGProver[bn128_FR, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base](pairing=pairing, srs=srs)
+        pcs_verifier = KZGVerifier[bn128_FR, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base](pairing=pairing, srs=srs)
 
         plonk_prover = PlonkProver[bn128_FR](pcs_prover=pcs_prover, constraints=self.constraints, preprocessed_input=self.preprocessed_input, mult_subgroup=self.mult_subgroup, field_class=self.field_class)
         plonk_verifier = PlonkVerifier[bn128_FR](pcs_verifier=pcs_verifier, preprocessed_input=self.preprocessed_input, mult_subgroup=self.mult_subgroup, field_class=self.field_class)
@@ -53,7 +53,7 @@ class TestPlonk():
         assert(valid_proof == True)
 
     def test_plonk_bulletproofs(self):
-        cyclic_group = bn128Group
+        cyclic_group = bn128_group
         crs = BulletproofsCRS.common_setup(d=16, cyclic_group=cyclic_group)
         pcs_prover = BulletproofsProver(crs=crs, field_class=self.field_class)
         pcs_verifier = BulletproofsVerifier(crs=crs, field_class=self.field_class)

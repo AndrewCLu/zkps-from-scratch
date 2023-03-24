@@ -1,7 +1,7 @@
-from algebra.cyclic_group import bn128Group, bls12_381Group
+from algebra.cyclic_group import bn128_group, bls12_381Group
 
 class TestCyclicGroup:
-    groups = [bn128Group, bls12_381Group]
+    groups = [bn128_group, bls12_381Group]
 
     def test_add(self):
         for g in self.groups:

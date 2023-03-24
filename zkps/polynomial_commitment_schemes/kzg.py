@@ -6,7 +6,7 @@ from py_ecc.typing import Point2D
 from dataclasses import dataclass
 from algebra.field import FElt
 from algebra.polynomial import Polynomial
-from algebra.pairing import EllipticCurve, BaseField, G2Field, GtField
+from algebra.pairing import Pairing, BaseField, G2Field, GtField
 from polynomial_commitment_schemes.pcs import Commitment, Opening, PCSProver, PCSVerifier
 from utils import unsigned_int_to_bytes
 
@@ -17,12 +17,12 @@ class KZGSRS(Generic[FElt, BaseField, G2Field, GtField]):
 
     @staticmethod
     # This is not secure since we are generating deterministically
-    def trusted_setup(d: int, ec: EllipticCurve[FElt, BaseField, G2Field, GtField], field_class: Type[FElt]) -> 'KZGSRS':
+    def trusted_setup(d: int, pairing: Pairing[FElt, BaseField, G2Field, GtField], field_class: Type[FElt]) -> 'KZGSRS':
         s: FElt = field_class(random.randint(1, field_class.field_modulus - 1))
-        G_1_elts = [ec.g_1] 
+        G_1_elts = [pairing.g_1] 
         for _ in range(d-1):
-            G_1_elts.append(ec.multiply(G_1_elts[-1], s))
-        G_2_elts = [ec.g_2, ec.multiply_G_2(ec.g_2, s)]
+            G_1_elts.append(pairing.multiply(G_1_elts[-1], s))
+        G_2_elts = [pairing.g_2, pairing.multiply_G_2(pairing.g_2, s)]
 
         return KZGSRS(
             G_1_elts=G_1_elts,
@@ -48,15 +48,15 @@ class KZGOpening(Opening, Generic[BaseField]):
     value: Point2D[BaseField]
 
 class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
-    def __init__(self, ec: EllipticCurve[FElt, BaseField, G2Field, GtField], srs: KZGSRS):
-        self.ec: EllipticCurve[FElt, BaseField, G2Field, GtField] = ec
+    def __init__(self, pairing: Pairing[FElt, BaseField, G2Field, GtField], srs: KZGSRS):
+        self.pairing: Pairing[FElt, BaseField, G2Field, GtField] = pairing
         self.srs: KZGSRS = srs
 
     def __eval_poly_with_srs(self, f: Polynomial[FElt]) -> Point2D[BaseField]:
-        res = self.ec.identity()
+        res = self.pairing.identity()
         for i in range(len(f.coeffs)):
-            eval = self.ec.multiply(self.srs.G_1_elts[i], f.coeffs[i])
-            res = self.ec.add(res, eval)
+            eval = self.pairing.multiply(self.srs.G_1_elts[i], f.coeffs[i])
+            res = self.pairing.add(res, eval)
         
         return res
 
@@ -103,8 +103,8 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
         return KZGOpening(value=op) 
 
 class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
-    def __init__(self, ec: EllipticCurve[FElt, BaseField, G2Field, GtField], srs: KZGSRS):
-        self.ec: EllipticCurve[FElt, BaseField, G2Field, GtField] = ec
+    def __init__(self, pairing: Pairing[FElt, BaseField, G2Field, GtField], srs: KZGSRS):
+        self.pairing: Pairing[FElt, BaseField, G2Field, GtField] = pairing
         self.srs: KZGSRS = srs
 
     def verify_opening(self, op: Opening, cm: Commitment, z: FElt, s: FElt, op_info: Any) -> bool:
@@ -113,8 +113,8 @@ class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
         if not isinstance(cm, KZGCommitment):
             raise Exception("Wrong commitment used. Must provide a KZG commitment.")
         
-        lhs = self.ec.pairing(op.value, self.ec.add_G_2(self.srs.G_2_elts[1], self.ec.multiply_G_2(self.srs.G_2_elts[0], -z)))
-        rhs = self.ec.pairing(self.ec.add(cm.value, self.ec.multiply(self.srs.G_1_elts[0], -s)), self.srs.G_2_elts[0])
+        lhs = self.pairing.pairing(op.value, self.pairing.add_G_2(self.srs.G_2_elts[1], self.pairing.multiply_G_2(self.srs.G_2_elts[0], -z)))
+        rhs = self.pairing.pairing(self.pairing.add(cm.value, self.pairing.multiply(self.srs.G_1_elts[0], -s)), self.srs.G_2_elts[0])
         return lhs == rhs
 
     def verify_batch_at_point(self, op: Opening, cms: List[Commitment], z: FElt, ss: List[FElt], op_info: Any) -> bool:
@@ -129,16 +129,16 @@ class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
             if not isinstance(cms[i], KZGCommitment):
                 raise Exception('Wrong commitment used. Must provide a KZG commitment.')
 
-        cm_sum = None # EC identity point
+        cm_sum = None # pairing identity point
         v_sum = z.zero() # TODO: Remove reference to class through instance
         scalar = z.one() # TODO: Remove reference to class through instance
         for i in range(batch_size):
-            cm_sum = self.ec.add(cm_sum, self.ec.multiply(cms[i].value, scalar))
+            cm_sum = self.pairing.add(cm_sum, self.pairing.multiply(cms[i].value, scalar))
             v_sum += ss[i] * scalar
 
             # TODO: Missing check that op_info is of type FElt
             scalar *= op_info
         
-        lhs = self.ec.pairing(op.value, self.ec.add_G_2(self.srs.G_2_elts[1], self.ec.multiply_G_2(self.srs.G_2_elts[0], -z)))
-        rhs = self.ec.pairing(self.ec.add(cm_sum, self.ec.multiply(self.srs.G_1_elts[0], -v_sum)), self.srs.G_2_elts[0])
+        lhs = self.pairing.pairing(op.value, self.pairing.add_G_2(self.srs.G_2_elts[1], self.pairing.multiply_G_2(self.srs.G_2_elts[0], -z)))
+        rhs = self.pairing.pairing(self.pairing.add(cm_sum, self.pairing.multiply(self.srs.G_1_elts[0], -v_sum)), self.srs.G_2_elts[0])
         return lhs == rhs
