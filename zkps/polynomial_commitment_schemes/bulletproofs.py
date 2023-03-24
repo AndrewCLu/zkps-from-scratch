@@ -14,9 +14,9 @@ class BulletproofsCRS(Generic[FElt, CyclicGroupElt]):
 
     @staticmethod
     # This is not secure since we are generating deterministically 
-    def common_setup(d: int, cyclic_group: Type[CyclicGroupElt]) -> 'BulletproofsCRS':
+    def common_setup(d: int, cyclic_group_class: Type[CyclicGroupElt]) -> 'BulletproofsCRS':
         G_elts = []
-        g = cyclic_group.generator()
+        g = cyclic_group_class.generator()
         for i in range(d):
             G_elts.append(g * i)
         H = g * d
@@ -50,9 +50,10 @@ class BulletproofsBatchOpening(Opening):
     value: List[BulletproofsOpeningProof]
 
 class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
-    def __init__(self, crs: BulletproofsCRS, field_class: Type[FElt]):
+    def __init__(self, crs: BulletproofsCRS, field_class: Type[FElt], cyclic_group_class: Type[CyclicGroupElt]):
         self.crs: BulletproofsCRS = crs
         self.field_class: Type[FElt] = field_class
+        self.cyclic_group_class: Type[CyclicGroupElt] = cyclic_group_class
         self.r: FElt = self.field_class(1234) # Fix randomness for consistent testing 
 
     # TODO: Better algorithms for MSM 
@@ -61,7 +62,7 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         if len(scalars) != len(groupElts):
             raise Exception('Length of scalars must be the same as those of group elements!')
 
-        res = groupElts[0].identity() # TODO: Remove class reference from instance
+        res = self.cyclic_group_class.identity()
         for i in range(len(scalars)):
             res += groupElts[i] * scalars[i]
         
@@ -135,7 +136,9 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         transcript.append(z)
         transcript.append(s)
         u_randomness = transcript.get_hash()
-        U = self.crs.G_elts[0].generator() * u_randomness # TODO: Remove class reference from instance 
+        U = self.cyclic_group_class.generator() * u_randomness 
+
+        # ---------- Compute initial values of a_vec, b_vec, g_vec ----------
 
         a_vec = f.coeffs
         d = nearest_larger_power_of_2(len(a_vec))
@@ -146,6 +149,8 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         b_vec = [self.field_class.one()]
         for _ in range(d - 1):
             b_vec.append(b_vec[-1] * z)
+
+        # ---------- Run algorithm to transform vectors down to points ----------
 
         L_js = []
         R_js = []
@@ -174,6 +179,8 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
             b_vec = self.__add_vec(self.__scale_vec(b_lo, u_j_inv), self.__scale_vec(b_hi, u_j))
             g_vec = self.__add_vec(self.__scale_vec(g_lo, u_j_inv), self.__scale_vec(g_hi, u_j))
             r_prime += l_j * u_j * u_j + r_j * u_j_inv * u_j_inv
+
+        # ---------- Run Schnorr protocol ----------
         
         if len(a_vec) != 1 or len(b_vec) != 1 or len(g_vec) != 1:
             raise Exception('Failed to compute final values of a, b, g!')
@@ -217,9 +224,10 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         )
 
 class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
-    def __init__(self, crs: BulletproofsCRS, field_class: Type[FElt]):
+    def __init__(self, crs: BulletproofsCRS, field_class: Type[FElt], cylcic_group_class: Type[CyclicGroupElt]):
         self.crs: BulletproofsCRS = crs
         self.field_class: Type[FElt] = field_class
+        self.cyclic_group_class: Type[CyclicGroupElt] = cylcic_group_class
 
     # TODO: Better algorithms for MSM 
     # TODO: Move MSM into utils    
@@ -227,7 +235,7 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
         if len(scalars) != len(groupElts):
             raise Exception('Length of scalars must be the same as those of group elements!')
 
-        res = groupElts[0].identity() # TODO: Remove class reference from instance
+        res = self.cyclic_group_class.identity()
         for i in range(len(scalars)):
             res += groupElts[i] * scalars[i]
         
@@ -251,12 +259,13 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
             raise Exception('Must provide Bulletproofs commitment to Bulletproofs verifier!')
 
         # ---------- Re-execute transcript based on proof values ----------
+
         transcript = Transcript(field_class=self.field_class)
         transcript.append(cm)
         transcript.append(z)
         transcript.append(s)
         u_randomness = transcript.get_hash()
-        U = self.crs.G_elts[0].generator() * u_randomness # TODO: Remove class reference from instance 
+        U = self.cyclic_group_class.generator() * u_randomness
         P_prime = cm.value + (U * s)
 
         L_js = op.value.L_js
@@ -278,6 +287,7 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
         transcript.append(R)
 
         # ---------- Compute derived G and b values ----------
+
         d = 2 ** k
         g_vec = self.crs.G_elts[:d]
         b_vec = [self.field_class.one()]
@@ -298,6 +308,7 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
         b = self.__scalarDotProduct(a=s_vec, b=b_vec)
 
         # ---------- Verify Schnorr proof using randomness from transcript ----------
+
         c = transcript.get_hash()
         LHS = (Q * c) + R
         H = self.crs.H

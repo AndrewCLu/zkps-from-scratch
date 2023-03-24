@@ -48,9 +48,10 @@ class KZGOpening(Opening, Generic[BaseField]):
     value: Point2D[BaseField]
 
 class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
-    def __init__(self, pairing: Pairing[FElt, BaseField, G2Field, GtField], srs: KZGSRS):
-        self.pairing: Pairing[FElt, BaseField, G2Field, GtField] = pairing
+    def __init__(self, srs: KZGSRS, pairing: Pairing[FElt, BaseField, G2Field, GtField], field_class: Type[FElt]):
         self.srs: KZGSRS = srs
+        self.pairing: Pairing[FElt, BaseField, G2Field, GtField] = pairing
+        self.field_class: Type[FElt] = field_class
 
     def __eval_poly_with_srs(self, f: Polynomial[FElt]) -> Point2D[BaseField]:
         res = self.pairing.identity()
@@ -72,8 +73,8 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
         if not isinstance(cm, KZGCommitment):
             raise Exception("Wrong commitment used. Must provide a KZG commitment.")
                 
-        quo, rem = (f - s) / Polynomial[FElt](coeffs=[-z, f.coeffs[0].one()]) # TODO: Remove reference to class through instance
-        if rem != Polynomial[FElt](coeffs=[f.coeffs[0].zero()]): # TODO: Remove reference to class through instance
+        quo, rem = (f - s) / Polynomial[FElt](coeffs=[-z, self.field_class.one()])
+        if rem != Polynomial[FElt](coeffs=[self.field_class.zero()]): 
             raise Exception("Opening is not valid: f(z) != s")
         op = self.__eval_poly_with_srs(quo)
 
@@ -84,18 +85,20 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
         if len(cms) != batch_size or len(ss) != batch_size:
             raise Exception('All parameters must have length equal to batch size!')
         
-        sum = Polynomial[FElt](coeffs=[fs[0].coeffs[0].zero()]) # TODO: Remove reference to class through instance
-        scalar = fs[0].coeffs[0].one() # TODO: Remove reference to class through instance
+        if not isinstance(op_info, self.field_class):
+            raise Exception("op_info must be of type FElt!")
+        
+        sum = Polynomial[FElt](coeffs=[self.field_class.zero()])
+        scalar = self.field_class.one() 
         for i in range(batch_size):
             if not isinstance(cms[i], KZGCommitment):
                 raise Exception("Wrong commitment used. Must provide a KZG commitment.")
 
-            quo, rem = (fs[i] - ss[i]) / Polynomial[FElt](coeffs=[-z, fs[i].coeffs[0].one()]) # TODO: Remove reference to class through instance
-            if rem != Polynomial[FElt](coeffs=[fs[i].coeffs[0].zero()]): # TODO: Remove reference to class through instance
+            quo, rem = (fs[i] - ss[i]) / Polynomial[FElt](coeffs=[-z, self.field_class.one()]) 
+            if rem != Polynomial[FElt](coeffs=[self.field_class.zero()]): 
                 raise Exception("Opening is not valid: f(z) != s")
-
+                
             sum += quo * scalar
-            # TODO: Missing check that op_info is of type FElt
             scalar *= op_info
         
         op = self.__eval_poly_with_srs(sum)
@@ -103,9 +106,10 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
         return KZGOpening(value=op) 
 
 class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
-    def __init__(self, pairing: Pairing[FElt, BaseField, G2Field, GtField], srs: KZGSRS):
-        self.pairing: Pairing[FElt, BaseField, G2Field, GtField] = pairing
+    def __init__(self, srs: KZGSRS, pairing: Pairing[FElt, BaseField, G2Field, GtField], field_class: Type[FElt]):
         self.srs: KZGSRS = srs
+        self.pairing: Pairing[FElt, BaseField, G2Field, GtField] = pairing
+        self.field_class: Type[FElt] = field_class
 
     def verify_opening(self, op: Opening, cm: Commitment, z: FElt, s: FElt, op_info: Any) -> bool:
         if not isinstance(op, KZGOpening):
@@ -121,6 +125,9 @@ class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
         if not isinstance(op, KZGOpening):
             raise Exception('Wrong opening used. Must provide a KZG opening.')
         
+        if not isinstance(op_info, self.field_class):
+            raise Exception('op_info must be of type FElt!')
+        
         batch_size = len(cms)
         if len(ss) != batch_size:
             raise Exception('All parameters must have length equal to batch size!')
@@ -129,14 +136,12 @@ class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
             if not isinstance(cms[i], KZGCommitment):
                 raise Exception('Wrong commitment used. Must provide a KZG commitment.')
 
-        cm_sum = None # pairing identity point
-        v_sum = z.zero() # TODO: Remove reference to class through instance
-        scalar = z.one() # TODO: Remove reference to class through instance
+        cm_sum = None # Pairing identity point
+        v_sum = self.field_class.zero()
+        scalar = self.field_class.one()
         for i in range(batch_size):
             cm_sum = self.pairing.add(cm_sum, self.pairing.multiply(cms[i].value, scalar))
             v_sum += ss[i] * scalar
-
-            # TODO: Missing check that op_info is of type FElt
             scalar *= op_info
         
         lhs = self.pairing.pairing(op.value, self.pairing.add_G_2(self.srs.G_2_elts[1], self.pairing.multiply_G_2(self.srs.G_2_elts[0], -z)))
