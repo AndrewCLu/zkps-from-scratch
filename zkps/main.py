@@ -4,7 +4,7 @@ from polynomial_commitment_schemes.kzg import KZGProver, KZGVerifier, KZGSRS
 from polynomial_commitment_schemes.bulletproofs import BulletproofsProver, BulletproofsVerifier, BulletproofsCRS
 from algebra.field import bn128_FR, bls12_381_FR
 from algebra.cyclic_group import bn128_group, bls12_381_group
-from algebra.pairing import bn128_pairing, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base
+from algebra.pairing import bn128_pairing, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base, bls12_381_pairing, bls12_381_FQ_base, bls12_381_FQ2_base, bls12_381_FQ12_base
 from constraints import PlonkConstraints
 from preprocessor import Preprocessor
 
@@ -37,28 +37,28 @@ def main():
     for field_class in [bn128_FR, bls12_381_FR]:
         pcs_prover = TrivialProver()
         pcs_verifier = TrivialVerifier()
-        print("---------- START RUNNING PLONK WITH TRIVIAL PCS ----------")
+        print("---------- START RUNNING PLONK WITH {field_class_name} + TRIVIAL PCS ----------".format(field_class_name=field_class.__name__))
         valid_proof = run_plonk(field_class, pcs_prover, pcs_verifier)
         print("Valid proof: {}".format(valid_proof))
-        print("---------- END RUNNING PLONK WITH TRIVIAL PCS ----------")
+        print("---------- END RUNNING PLONK WITH {field_class_name} + TRIVIAL PCS ----------\n\n".format(field_class_name=field_class.__name__))
 
         pairing = bn128_pairing() if field_class == bn128_FR else bls12_381_pairing()
         srs = KZGSRS.trusted_setup(d=10, pairing=pairing, field_class=field_class)
         pcs_prover = KZGProver(srs=srs, pairing=pairing, field_class=field_class)
         pcs_verifier = KZGVerifier(srs=srs, pairing=pairing, field_class=field_class)
-        print("---------- START RUNNING PLONK WITH KZG PCS ----------")
+        print("---------- START RUNNING PLONK WITH {field_class_name} + KZG PCS ----------".format(field_class_name=field_class.__name__))
         valid_proof = run_plonk(field_class, pcs_prover, pcs_verifier)
         print("Valid proof: {}".format(valid_proof))
-        print("---------- END RUNNING PLONK WITH KZG PCS ----------")
+        print("---------- END RUNNING PLONK WITH {field_class_name} + KZG PCS ----------\n\n".format(field_class_name=field_class.__name__))
 
         cyclic_group_class = bn128_group if field_class == bn128_FR else bls12_381_group
-        crs = BulletproofsCRS.common_setup(d=10, cyclic_group_class=cyclic_group_class)
+        crs = BulletproofsCRS.common_setup(d=16, cyclic_group_class=cyclic_group_class)
         pcs_prover = BulletproofsProver(crs=crs, field_class=field_class, cyclic_group_class=cyclic_group_class)
         pcs_verifier = BulletproofsVerifier(crs=crs, field_class=field_class, cyclic_group_class=cyclic_group_class)
-        print("---------- START RUNNING PLONK WITH BULLETPROOFS PCS ----------")
+        print("---------- START RUNNING PLONK WITH {field_class_name} + BULLETPROOFS PCS ----------".format(field_class_name=field_class.__name__))
         valid_proof = run_plonk(field_class, pcs_prover, pcs_verifier)
         print("Valid proof: {}".format(valid_proof))
-        print("---------- END RUNNING PLONK WITH BULLETPROOFS PCS ----------")
+        print("---------- END RUNNING PLONK WITH {field_class_name} + BULLETPROOFS PCS ----------\n\n".format(field_class_name=field_class.__name__))
 
 if __name__ == "__main__":
     main()

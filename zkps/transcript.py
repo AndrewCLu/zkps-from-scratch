@@ -10,7 +10,7 @@ class Transcript(Generic[FElt]):
 
     def append(self, entry: Byteable) -> None:
         self.record.extend(entry.to_bytes())
-        print("Appending {s} to transcript...".format(s=str(entry)))
+        # print("Appending {s} to transcript...".format(s=str(entry)))
 
     def get_hash(self, salt: Optional[bytes]=None) -> FElt:
         bytes_copy = self.record[:]
@@ -20,5 +20,5 @@ class Transcript(Generic[FElt]):
         k.update(bytes_copy)
 
         hash_int = int(k.hexdigest(), 16)
-        print("Produced hash {s} from transcript...".format(s=str(hash_int)))
+        # print("Produced hash {s} from transcript...".format(s=str(hash_int)))
         return self.field_class(hash_int)
