@@ -224,10 +224,10 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         )
 
 class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
-    def __init__(self, crs: BulletproofsCRS, field_class: Type[FElt], cylcic_group_class: Type[CyclicGroupElt]):
+    def __init__(self, crs: BulletproofsCRS, field_class: Type[FElt], cyclic_group_class: Type[CyclicGroupElt]):
         self.crs: BulletproofsCRS = crs
         self.field_class: Type[FElt] = field_class
-        self.cyclic_group_class: Type[CyclicGroupElt] = cylcic_group_class
+        self.cyclic_group_class: Type[CyclicGroupElt] = cyclic_group_class
 
     # TODO: Better algorithms for MSM 
     # TODO: Move MSM into utils    

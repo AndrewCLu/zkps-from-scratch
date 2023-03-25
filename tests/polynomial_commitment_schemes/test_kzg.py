@@ -7,8 +7,8 @@ class TestKZGPCS():
     field_class = bn128_FR
     pairing = bn128_pairing
     srs = KZGSRS.trusted_setup(10, pairing, field_class)
-    prover = KZGProver(pairing, srs)
-    verifier = KZGVerifier(pairing, srs)
+    prover = KZGProver(srs, pairing, field_class)
+    verifier = KZGVerifier(srs, pairing, field_class)
     f = Polynomial(coeffs=[bn128_FR(1), bn128_FR(2), bn128_FR(3)])
     z = bn128_FR(4)
     s = bn128_FR(57)

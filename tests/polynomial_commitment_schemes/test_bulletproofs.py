@@ -5,10 +5,10 @@ from algebra.cyclic_group import bn128_group
 
 class TestBulletproofsPCS():
     field_class = bn128_FR
-    cyclic_group = bn128_group
-    crs = BulletproofsCRS.common_setup(10, cyclic_group)
-    prover = BulletproofsProver(crs, field_class)
-    verifier = BulletproofsVerifier(crs, field_class)
+    cyclic_group_class = bn128_group
+    crs = BulletproofsCRS.common_setup(10, cyclic_group_class)
+    prover = BulletproofsProver(crs, field_class, cyclic_group_class)
+    verifier = BulletproofsVerifier(crs, field_class, cyclic_group_class)
     f = Polynomial(coeffs=[bn128_FR(1), bn128_FR(2), bn128_FR(3)])
     z = bn128_FR(4)
     s = bn128_FR(57)
