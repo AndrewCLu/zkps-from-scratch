@@ -2,5 +2,3 @@
 .pytest_cache/*
 .vscode/*
 .mypy_cache/*
-
-zkps/main.py
