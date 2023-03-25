@@ -2,6 +2,7 @@ from algebra.field import FElt
 from typing import Generic, List, Type, Union, Tuple
 from copy import deepcopy
 from dataclasses import dataclass
+from metrics import counter
 
 @dataclass
 class Polynomial(Generic[FElt]):
@@ -120,6 +121,7 @@ class Polynomial(Generic[FElt]):
 
     # TODO: IFFT
     @staticmethod
+    @counter
     def interpolate_poly(domain: List[FElt], values: List[FElt], field_class: Type[FElt]) -> 'Polynomial':
         if len(domain) != len(values):
             raise Exception("Must provide number of values equal to size of domain!")

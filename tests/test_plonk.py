@@ -37,7 +37,7 @@ class TestPlonk():
 
         proof = plonk_prover.prove(witness=self.witness, public_inputs=self.public_inputs)
         valid_proof = plonk_verifier.verify(proof=proof, public_inputs=self.public_inputs)
-        assert(valid_proof == True)
+        assert(valid_proof)
 
     def test_plonk_kzg(self):
         pairing = bn128_pairing()
@@ -50,7 +50,7 @@ class TestPlonk():
 
         proof = plonk_prover.prove(witness=self.witness, public_inputs=self.public_inputs)
         valid_proof = plonk_verifier.verify(proof=proof, public_inputs=self.public_inputs)
-        assert(valid_proof == True)
+        assert(valid_proof)
 
     def test_plonk_bulletproofs(self):
         cyclic_group_class = bn128_group
@@ -63,4 +63,4 @@ class TestPlonk():
 
         proof = plonk_prover.prove(witness=self.witness, public_inputs=self.public_inputs)
         valid_proof = plonk_verifier.verify(proof=proof, public_inputs=self.public_inputs)
-        assert(valid_proof == True)
+        assert(valid_proof)
