@@ -1,4 +1,4 @@
-from typing import Generic, List, Optional, Type
+from typing import Generic, Optional, Type
 from algebra.field import FElt
 from Crypto.Hash import keccak
 from utils import Byteable

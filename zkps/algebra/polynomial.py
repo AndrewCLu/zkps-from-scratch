@@ -1,7 +1,7 @@
-from algebra.field import FElt
 from typing import Generic, List, Type, Union, Tuple
 from copy import deepcopy
 from dataclasses import dataclass
+from algebra.field import FElt
 from metrics import Counter
 
 

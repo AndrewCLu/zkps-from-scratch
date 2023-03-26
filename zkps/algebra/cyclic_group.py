@@ -1,9 +1,9 @@
-from py_ecc.fields.field_elements import FQ
-from algebra.field import bn128_FR, bls12_381_FR
 from dataclasses import dataclass
 from typing import TypeVar, Union, Any
-from utils import unsigned_int_to_bytes
 from abc import ABC, abstractmethod
+from py_ecc.fields.field_elements import FQ
+from algebra.field import bn128_FR, bls12_381_FR
+from utils import unsigned_int_to_bytes
 
 
 class CyclicGroup(ABC):
@@ -44,7 +44,7 @@ class bn128_group(CyclicGroup):
 
     def __add__(self, other: "CyclicGroup") -> "bn128_group":
         if not isinstance(other, bn128_group):
-            raise Exception("Can only add bn128_group elements!")
+            raise ValueError("Can only add bn128_group elements!")
         return bn128_group((self.value + other.value) % self.order)
 
     def __mul__(self, other: Union[int, FQ]) -> "bn128_group":
@@ -53,13 +53,13 @@ class bn128_group(CyclicGroup):
         elif isinstance(other, FQ):
             return bn128_group((self.value * other.n) % self.order)
         else:
-            raise Exception(
+            raise ValueError(
                 "Can only multiply bn128_group elements by ints or field elements!"
             )
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, bn128_group):
-            raise Exception("Can only compare bn128_group elements!")
+            raise ValueError("Can only compare bn128_group elements!")
         return self.value == other.value
 
     @classmethod
@@ -81,7 +81,7 @@ class bls12_381_group(CyclicGroup):
 
     def __add__(self, other: "CyclicGroup") -> "bls12_381_group":
         if not isinstance(other, bls12_381_group):
-            raise Exception("Can only add bls12_381_group elements!")
+            raise ValueError("Can only add bls12_381_group elements!")
         return bls12_381_group((self.value + other.value) % self.order)
 
     def __mul__(self, other: Union[int, FQ]) -> "bls12_381_group":
@@ -90,13 +90,13 @@ class bls12_381_group(CyclicGroup):
         elif isinstance(other, FQ):
             return bls12_381_group((self.value * other.n) % self.order)
         else:
-            raise Exception(
+            raise ValueError(
                 "Can only multiply bls12_381_group elements by ints or field elements!"
             )
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, bls12_381_group):
-            raise Exception("Can only compare bls12_381_group elements!")
+            raise ValueError("Can only compare bls12_381_group elements!")
         return self.value == other.value
 
     @classmethod

@@ -1,9 +1,9 @@
+from typing import List, TypeVar
 from py_ecc import (
     bn128 as bn128_base,
     bls12_381 as bls12_381_base,
 )
 from py_ecc.fields.field_elements import FQ
-from typing import List, TypeVar
 from utils import Byteable, unsigned_int_to_bytes
 
 
@@ -14,7 +14,7 @@ class bn128_FR(FQ, Byteable):
     @classmethod
     def get_roots_of_unity(cls, order: int) -> List["bn128_FR"]:
         if (cls.field_modulus - 1) % order != 0:
-            raise Exception(
+            raise ValueError(
                 "Order of roots of unity must divide the field modulus minus 1!"
             )
 
@@ -26,7 +26,7 @@ class bn128_FR(FQ, Byteable):
             prod *= root
 
         if prod != cls.one():
-            raise Exception("Failed to compute valid roots of unity!")
+            raise RuntimeError("Failed to compute valid roots of unity!")
 
         return res
 
@@ -34,7 +34,7 @@ class bn128_FR(FQ, Byteable):
         return unsigned_int_to_bytes(self.n)
 
     def __str__(self) -> str:
-        return "{n} [{mod}]".format(n=self.n, mod=self.field_modulus)
+        return f"{self.n} [{self.field_modulus}]"
 
 
 class bls12_381_FR(FQ, Byteable):
@@ -44,7 +44,7 @@ class bls12_381_FR(FQ, Byteable):
     @classmethod
     def get_roots_of_unity(cls, order: int) -> List["bls12_381_FR"]:
         if (cls.field_modulus - 1) % order != 0:
-            raise Exception(
+            raise ValueError(
                 "Order of roots of unity must divide the field modulus minus 1!"
             )
 
@@ -56,7 +56,7 @@ class bls12_381_FR(FQ, Byteable):
             prod *= root
 
         if prod != cls.one():
-            raise Exception("Failed to compute valid roots of unity!")
+            raise RuntimeError("Failed to compute valid roots of unity!")
 
         return res
 
@@ -64,7 +64,7 @@ class bls12_381_FR(FQ, Byteable):
         return unsigned_int_to_bytes(self.n)
 
     def __str__(self) -> str:
-        return "{n} [{mod}]".format(n=self.n, mod=self.field_modulus)
+        return f"{self.n} [{self.field_modulus}]"
 
 
 FElt = TypeVar("FElt", bn128_FR, bls12_381_FR)

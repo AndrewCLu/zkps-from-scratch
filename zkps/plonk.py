@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import List, Generic, Any, Type
+from typing import List, Generic, Type
+from copy import deepcopy
 from algebra.field import FElt
 from algebra.polynomial import Polynomial
 from constraints import PlonkConstraints
@@ -11,7 +12,6 @@ from polynomial_commitment_schemes.pcs import (
     Opening,
 )
 from transcript import Transcript
-from copy import deepcopy
 
 
 @dataclass

@@ -2,8 +2,8 @@ from __future__ import absolute_import
 
 import random
 from typing import Generic, Any, List, Type
-from py_ecc.typing import Point2D
 from dataclasses import dataclass
+from py_ecc.typing import Point2D
 from algebra.field import FElt
 from algebra.polynomial import Polynomial
 from algebra.pairing import Pairing, BaseField, G2Field, GtField
