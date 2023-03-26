@@ -5,16 +5,17 @@ from typing import TypeVar, Union, Any
 from utils import unsigned_int_to_bytes
 from abc import ABC, abstractmethod
 
+
 class CyclicGroup(ABC):
     value: Any
     order: int
 
     @abstractmethod
-    def __add__(self, other: 'CyclicGroup') -> 'CyclicGroup':
+    def __add__(self, other: "CyclicGroup") -> "CyclicGroup":
         pass
 
     @abstractmethod
-    def __mul__(self, other: int) -> 'CyclicGroup':
+    def __mul__(self, other: int) -> "CyclicGroup":
         pass
 
     @abstractmethod
@@ -23,84 +24,91 @@ class CyclicGroup(ABC):
 
     @classmethod
     @abstractmethod
-    def identity(cls) -> 'CyclicGroup':
+    def identity(cls) -> "CyclicGroup":
         pass
 
     @classmethod
     @abstractmethod
-    def generator(cls) -> 'CyclicGroup':
+    def generator(cls) -> "CyclicGroup":
         pass
 
     @abstractmethod
     def to_bytes(self) -> bytes:
         pass
+
 
 @dataclass
 class bn128_group(CyclicGroup):
     value: int
     order: int = bn128_FR.field_modulus
 
-    def __add__(self, other: 'CyclicGroup') -> 'bn128_group':
+    def __add__(self, other: "CyclicGroup") -> "bn128_group":
         if not isinstance(other, bn128_group):
-            raise Exception('Can only add bn128_group elements!')
+            raise Exception("Can only add bn128_group elements!")
         return bn128_group((self.value + other.value) % self.order)
-    
-    def __mul__(self, other: Union[int, FQ]) -> 'bn128_group':
+
+    def __mul__(self, other: Union[int, FQ]) -> "bn128_group":
         if isinstance(other, int):
             return bn128_group((self.value * other) % self.order)
         elif isinstance(other, FQ):
             return bn128_group((self.value * other.n) % self.order)
         else:
-            raise Exception('Can only multiply bn128_group elements by ints or field elements!')
+            raise Exception(
+                "Can only multiply bn128_group elements by ints or field elements!"
+            )
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, bn128_group):
-            raise Exception('Can only compare bn128_group elements!')
+            raise Exception("Can only compare bn128_group elements!")
         return self.value == other.value
-    
+
     @classmethod
-    def identity(cls) -> 'bn128_group':
+    def identity(cls) -> "bn128_group":
         return bn128_group(0)
 
     @classmethod
-    def generator(cls) -> 'bn128_group':
+    def generator(cls) -> "bn128_group":
         return bn128_group(1)
 
     def to_bytes(self) -> bytes:
         return unsigned_int_to_bytes(self.value)
+
 
 @dataclass
 class bls12_381_group(CyclicGroup):
     value: int
     order: int = bls12_381_FR.field_modulus
 
-    def __add__(self, other: 'CyclicGroup') -> 'bls12_381_group':
+    def __add__(self, other: "CyclicGroup") -> "bls12_381_group":
         if not isinstance(other, bls12_381_group):
-            raise Exception('Can only add bls12_381_group elements!')
+            raise Exception("Can only add bls12_381_group elements!")
         return bls12_381_group((self.value + other.value) % self.order)
-    
-    def __mul__(self, other: Union[int, FQ]) -> 'bls12_381_group':
+
+    def __mul__(self, other: Union[int, FQ]) -> "bls12_381_group":
         if isinstance(other, int):
             return bls12_381_group((self.value * other) % self.order)
         elif isinstance(other, FQ):
             return bls12_381_group((self.value * other.n) % self.order)
         else:
-            raise Exception('Can only multiply bls12_381_group elements by ints or field elements!')
+            raise Exception(
+                "Can only multiply bls12_381_group elements by ints or field elements!"
+            )
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, bls12_381_group):
-            raise Exception('Can only compare bls12_381_group elements!')
+            raise Exception("Can only compare bls12_381_group elements!")
         return self.value == other.value
-    
+
     @classmethod
-    def identity(cls) -> 'bls12_381_group':
+    def identity(cls) -> "bls12_381_group":
         return bls12_381_group(0)
 
     @classmethod
-    def generator(cls) -> 'bls12_381_group':
+    def generator(cls) -> "bls12_381_group":
         return bls12_381_group(1)
 
     def to_bytes(self) -> bytes:
         return unsigned_int_to_bytes(self.value)
 
-CyclicGroupElt = TypeVar('CyclicGroupElt', bn128_group, bls12_381_group)
+
+CyclicGroupElt = TypeVar("CyclicGroupElt", bn128_group, bls12_381_group)

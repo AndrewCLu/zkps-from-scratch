@@ -3,6 +3,7 @@ from algebra.field import FElt
 from Crypto.Hash import keccak
 from utils import Byteable
 
+
 class Transcript(Generic[FElt]):
     def __init__(self, field_class: Type[FElt]) -> None:
         self.field_class: Type[FElt] = field_class
@@ -12,7 +13,7 @@ class Transcript(Generic[FElt]):
         self.record.extend(entry.to_bytes())
         # print("Appending {s} to transcript...".format(s=str(entry)))
 
-    def get_hash(self, salt: Optional[bytes]=None) -> FElt:
+    def get_hash(self, salt: Optional[bytes] = None) -> FElt:
         bytes_copy = self.record[:]
         if salt:
             bytes_copy.extend(salt)
