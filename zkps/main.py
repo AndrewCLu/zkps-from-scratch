@@ -71,10 +71,10 @@ def main():
         pcs_prover = TrivialProver()
         pcs_verifier = TrivialVerifier()
         print(
-            f"---------- START RUNNING PLONK WITH {field_class.__name__} + TRIVIAL PCS ----------\n\n"
+            f"---------- START RUNNING PLONK WITH {field_class.__name__} + TRIVIAL PCS ----------"
         )
         valid_proof = run_plonk(field_class, pcs_prover, pcs_verifier)
-        print("Valid proof: {}".format(valid_proof))
+        print(f"Valid proof: {valid_proof}")
         Counter.display()
         Counter.reset()
         print(
@@ -86,10 +86,10 @@ def main():
         pcs_prover = KZGProver(srs=srs, pairing=pairing, field_class=field_class)
         pcs_verifier = KZGVerifier(srs=srs, pairing=pairing, field_class=field_class)
         print(
-            f"---------- START RUNNING PLONK WITH {field_class.__name__} + KZG PCS ----------\n\n"
+            f"---------- START RUNNING PLONK WITH {field_class.__name__} + KZG PCS ----------"
         )
         valid_proof = run_plonk(field_class, pcs_prover, pcs_verifier)
-        print("Valid proof: {}".format(valid_proof))
+        print(f"Valid proof: {valid_proof}")
         Counter.display()
         Counter.reset()
         print(
@@ -105,7 +105,7 @@ def main():
             crs=crs, field_class=field_class, cyclic_group_class=cyclic_group_class
         )
         print(
-            f"---------- START RUNNING PLONK WITH {field_class.__name__} + BULLETPROOFS PCS ----------\n\n"
+            f"---------- START RUNNING PLONK WITH {field_class.__name__} + BULLETPROOFS PCS ----------"
         )
         valid_proof = run_plonk(field_class, pcs_prover, pcs_verifier)
         print(f"Valid proof: {valid_proof}")

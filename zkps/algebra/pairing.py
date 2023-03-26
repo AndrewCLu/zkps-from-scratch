@@ -24,33 +24,33 @@ class Pairing(ABC, Generic[FElt, BaseField, G2Field, GtField]):
     g_1: Point2D[BaseField]
     g_2: Point2D[G2Field]
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def add(p1: Point2D[BaseField], p2: Point2D[BaseField]) -> Point2D[BaseField]:
         pass
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def add_G_2(p1: Point2D[G2Field], p2: Point2D[G2Field]) -> Point2D[G2Field]:
         pass
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def multiply(p: Point2D[BaseField], n: FElt) -> Point2D[BaseField]:
         pass
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def multiply_G_2(p: Point2D[G2Field], n: FElt) -> Point2D[G2Field]:
         pass
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def identity() -> Point2D[BaseField]:
         pass
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def pairing(p: Point2D[BaseField], q: Point2D[G2Field]) -> GtField:
         pass
 
