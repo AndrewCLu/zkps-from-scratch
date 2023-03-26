@@ -7,6 +7,7 @@ from algebra.cyclic_group import bn128_group, bls12_381_group
 from algebra.pairing import bn128_pairing, bn128_FQ_base, bn128_FQ2_base, bn128_FQ12_base, bls12_381_pairing, bls12_381_FQ_base, bls12_381_FQ2_base, bls12_381_FQ12_base
 from constraints import PlonkConstraints
 from preprocessor import Preprocessor
+from metrics import Counter
 
 def run_plonk(field_class, pcs_prover, pcs_verifier):
     constraints = PlonkConstraints(
@@ -40,6 +41,8 @@ def main():
         print("---------- START RUNNING PLONK WITH {field_class_name} + TRIVIAL PCS ----------".format(field_class_name=field_class.__name__))
         valid_proof = run_plonk(field_class, pcs_prover, pcs_verifier)
         print("Valid proof: {}".format(valid_proof))
+        Counter.display()
+        Counter.reset()
         print("---------- END RUNNING PLONK WITH {field_class_name} + TRIVIAL PCS ----------\n\n".format(field_class_name=field_class.__name__))
 
         pairing = bn128_pairing() if field_class == bn128_FR else bls12_381_pairing()
@@ -49,6 +52,8 @@ def main():
         print("---------- START RUNNING PLONK WITH {field_class_name} + KZG PCS ----------".format(field_class_name=field_class.__name__))
         valid_proof = run_plonk(field_class, pcs_prover, pcs_verifier)
         print("Valid proof: {}".format(valid_proof))
+        Counter.display()
+        Counter.reset()
         print("---------- END RUNNING PLONK WITH {field_class_name} + KZG PCS ----------\n\n".format(field_class_name=field_class.__name__))
 
         cyclic_group_class = bn128_group if field_class == bn128_FR else bls12_381_group
@@ -58,6 +63,8 @@ def main():
         print("---------- START RUNNING PLONK WITH {field_class_name} + BULLETPROOFS PCS ----------".format(field_class_name=field_class.__name__))
         valid_proof = run_plonk(field_class, pcs_prover, pcs_verifier)
         print("Valid proof: {}".format(valid_proof))
+        Counter.display()
+        Counter.reset()
         print("---------- END RUNNING PLONK WITH {field_class_name} + BULLETPROOFS PCS ----------\n\n".format(field_class_name=field_class.__name__))
 
 if __name__ == "__main__":

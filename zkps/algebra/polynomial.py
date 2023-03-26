@@ -2,7 +2,7 @@ from algebra.field import FElt
 from typing import Generic, List, Type, Union, Tuple
 from copy import deepcopy
 from dataclasses import dataclass
-from metrics import counter
+from metrics import Counter
 
 @dataclass
 class Polynomial(Generic[FElt]):
@@ -121,7 +121,7 @@ class Polynomial(Generic[FElt]):
 
     # TODO: IFFT
     @staticmethod
-    @counter
+    @Counter
     def interpolate_poly(domain: List[FElt], values: List[FElt], field_class: Type[FElt]) -> 'Polynomial':
         if len(domain) != len(values):
             raise Exception("Must provide number of values equal to size of domain!")
@@ -134,6 +134,7 @@ class Polynomial(Generic[FElt]):
         return res
 
     @staticmethod
+    @Counter
     def lagrange_poly(domain: List[FElt], index: int, field_class: Type[FElt]) -> 'Polynomial':
         if index >= len(domain):
             raise Exception("Index must be within the bounds of the domain!")

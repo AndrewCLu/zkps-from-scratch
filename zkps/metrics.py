@@ -1,13 +1,22 @@
 from collections import defaultdict
 
-def counter(func):
+class Counter:
     call_count = defaultdict(int)
 
-    def wrapper(*args, **kwargs):
-        call_count[func.__name__] += 1
-        print(f"Function '{func.__name__}' has been called {call_count[func.__name__]} times")
-        return func(*args, **kwargs)
+    def __init__(self, func):
+        self.func = func
+    
+    def __call__(self, *args, **kwargs):
+        Counter.call_count[self.func.__name__] += 1
+        # print(f"Function '{self.func.__name__}' has been called {Counter.call_count[self.func.__name__]} times")
+        return self.func(*args, **kwargs)
+    
+    @classmethod
+    def display(cls):
+        for (func_name, count) in Counter.call_count.items():
+            print(f"Function '{func_name}' has been called {count} times")
 
-    wrapper.call_count = lambda: call_count
+    @classmethod
+    def reset(cls):
+        Counter.call_count.clear()
 
-    return wrapper
