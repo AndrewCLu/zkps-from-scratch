@@ -31,7 +31,7 @@ class KZGSRS(Generic[FElt, BaseField, G2Field, GtField]):
         s: FElt = field_class(random.randint(1, field_class.field_modulus - 1))
         G_1_elts = [pairing.g_1]
         for _ in range(d - 1):
-            G_1_elts.append(pairing.multiply(G_1_elts[-1], s))
+            G_1_elts.append(pairing.multiply_G_1(G_1_elts[-1], s))
         G_2_elts = [pairing.g_2, pairing.multiply_G_2(pairing.g_2, s)]
 
         return KZGSRS(G_1_elts=G_1_elts, G_2_elts=G_2_elts)
@@ -71,8 +71,8 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
     def __eval_poly_with_srs(self, f: Polynomial[FElt]) -> Point2D[BaseField]:
         res = self.pairing.identity()
         for i in range(len(f.coeffs)):
-            eval = self.pairing.multiply(self.srs.G_1_elts[i], f.coeffs[i])
-            res = self.pairing.add(res, eval)
+            eval = self.pairing.multiply_G_1(self.srs.G_1_elts[i], f.coeffs[i])
+            res = self.pairing.add_G_1(res, eval)
 
         return res
 
@@ -161,7 +161,9 @@ class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
             ),
         )
         rhs = self.pairing.pairing(
-            self.pairing.add(cm.value, self.pairing.multiply(self.srs.G_1_elts[0], -s)),
+            self.pairing.add_G_1(
+                cm.value, self.pairing.multiply_G_1(self.srs.G_1_elts[0], -s)
+            ),
             self.srs.G_2_elts[0],
         )
         return lhs == rhs
@@ -189,8 +191,8 @@ class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
         v_sum = self.field_class.zero()
         scalar = self.field_class.one()
         for i in range(batch_size):
-            cm_sum = self.pairing.add(
-                cm_sum, self.pairing.multiply(cms[i].value, scalar)
+            cm_sum = self.pairing.add_G_1(
+                cm_sum, self.pairing.multiply_G_1(cms[i].value, scalar)
             )
             v_sum += ss[i] * scalar
             scalar *= op_info
@@ -203,8 +205,8 @@ class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
             ),
         )
         rhs = self.pairing.pairing(
-            self.pairing.add(
-                cm_sum, self.pairing.multiply(self.srs.G_1_elts[0], -v_sum)
+            self.pairing.add_G_1(
+                cm_sum, self.pairing.multiply_G_1(self.srs.G_1_elts[0], -v_sum)
             ),
             self.srs.G_2_elts[0],
         )

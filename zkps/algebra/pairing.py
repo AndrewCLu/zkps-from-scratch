@@ -27,7 +27,7 @@ class Pairing(ABC, Generic[FElt, BaseField, G2Field, GtField]):
 
     @staticmethod
     @abstractmethod
-    def add(p1: Point2D[BaseField], p2: Point2D[BaseField]) -> Point2D[BaseField]:
+    def add_G_1(p1: Point2D[BaseField], p2: Point2D[BaseField]) -> Point2D[BaseField]:
         pass
 
     @staticmethod
@@ -37,7 +37,7 @@ class Pairing(ABC, Generic[FElt, BaseField, G2Field, GtField]):
 
     @staticmethod
     @abstractmethod
-    def multiply(p: Point2D[BaseField], n: FElt) -> Point2D[BaseField]:
+    def multiply_G_1(p: Point2D[BaseField], n: FElt) -> Point2D[BaseField]:
         pass
 
     @staticmethod
@@ -62,7 +62,7 @@ class bn128_pairing(Pairing):
 
     @staticmethod
     @Counter
-    def add(
+    def add_G_1(
         p1: Point2D[bn128_FQ_base], p2: Point2D[bn128_FQ_base]
     ) -> Point2D[bn128_FQ_base]:
         return bn128_base.add(p1, p2)
@@ -76,7 +76,7 @@ class bn128_pairing(Pairing):
 
     @staticmethod
     @Counter
-    def multiply(p: Point2D[bn128_FQ_base], n: FElt) -> Point2D[bn128_FQ_base]:
+    def multiply_G_1(p: Point2D[bn128_FQ_base], n: FElt) -> Point2D[bn128_FQ_base]:
         return bn128_base.multiply(p, n.n)
 
     @staticmethod
@@ -102,7 +102,7 @@ class bls12_381_pairing(Pairing):
 
     @staticmethod
     @Counter
-    def add(
+    def add_G_1(
         p1: Point2D[bls12_381_FQ_base], p2: Point2D[bls12_381_FQ_base]
     ) -> Point2D[bls12_381_FQ_base]:
         return bls12_381_base.add(p1, p2)
@@ -116,7 +116,9 @@ class bls12_381_pairing(Pairing):
 
     @staticmethod
     @Counter
-    def multiply(p: Point2D[bls12_381_FQ_base], n: FElt) -> Point2D[bls12_381_FQ_base]:
+    def multiply_G_1(
+        p: Point2D[bls12_381_FQ_base], n: FElt
+    ) -> Point2D[bls12_381_FQ_base]:
         return bls12_381_base.multiply(p, n.n)
 
     @staticmethod
