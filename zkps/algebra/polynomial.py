@@ -147,7 +147,7 @@ class Polynomial(Generic[FElt]):
         domain: List[FElt], values: List[FElt], field_class: Type[FElt]
     ) -> "Polynomial":
         if len(domain) != len(values):
-            raise Exception("Must provide number of values equal to size of domain!")
+            raise ValueError("Must provide number of values equal to size of domain!")
 
         res = Polynomial[FElt]([field_class.zero()])
         for i in range(len(domain)):
@@ -164,7 +164,7 @@ class Polynomial(Generic[FElt]):
         domain: List[FElt], index: int, field_class: Type[FElt]
     ) -> "Polynomial":
         if index >= len(domain):
-            raise Exception("Index must be within the bounds of the domain!")
+            raise ValueError("Index must be within the bounds of the domain!")
 
         prod = Polynomial[FElt]([field_class.one()])
         divisor = field_class.one()
@@ -176,6 +176,6 @@ class Polynomial(Generic[FElt]):
 
         quo, rem = prod / divisor
         if rem != Polynomial[FElt](coeffs=[field_class.zero()]):
-            raise Exception("Error computing lagrange polynomial!")
+            raise ValueError("Error computing lagrange polynomial!")
 
         return quo

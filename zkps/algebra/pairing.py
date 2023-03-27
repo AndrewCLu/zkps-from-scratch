@@ -14,6 +14,7 @@ from py_ecc.fields import (
 )
 from py_ecc.typing import Point2D
 from algebra.field import FElt
+from metrics import Counter
 
 BaseField = TypeVar("BaseField", bn128_FQ_base, bls12_381_FQ_base)
 G2Field = TypeVar("G2Field", bn128_FQ2_base, bls12_381_FQ2_base)
@@ -60,22 +61,26 @@ class bn128_pairing(Pairing):
     g_2: Point2D[bn128_FQ2_base] = bn128_base.G2
 
     @staticmethod
+    @Counter
     def add(
         p1: Point2D[bn128_FQ_base], p2: Point2D[bn128_FQ_base]
     ) -> Point2D[bn128_FQ_base]:
         return bn128_base.add(p1, p2)
 
     @staticmethod
+    @Counter
     def add_G_2(
         p1: Point2D[bn128_FQ2_base], p2: Point2D[bn128_FQ2_base]
     ) -> Point2D[bn128_FQ2_base]:
         return bn128_base.add(p1, p2)
 
     @staticmethod
+    @Counter
     def multiply(p: Point2D[bn128_FQ_base], n: FElt) -> Point2D[bn128_FQ_base]:
         return bn128_base.multiply(p, n.n)
 
     @staticmethod
+    @Counter
     def multiply_G_2(p: Point2D[bn128_FQ2_base], n: FElt) -> Point2D[bn128_FQ2_base]:
         return bn128_base.multiply(p, n.n)
 
@@ -84,6 +89,7 @@ class bn128_pairing(Pairing):
         return None
 
     @staticmethod
+    @Counter
     def pairing(
         p: Point2D[bn128_FQ_base], q: Point2D[bn128_FQ2_base]
     ) -> bn128_FQ12_base:
@@ -95,22 +101,26 @@ class bls12_381_pairing(Pairing):
     g_2: Point2D[bls12_381_FQ2_base] = bls12_381_base.G2
 
     @staticmethod
+    @Counter
     def add(
         p1: Point2D[bls12_381_FQ_base], p2: Point2D[bls12_381_FQ_base]
     ) -> Point2D[bls12_381_FQ_base]:
         return bls12_381_base.add(p1, p2)
 
     @staticmethod
+    @Counter
     def add_G_2(
         p1: Point2D[bls12_381_FQ2_base], p2: Point2D[bls12_381_FQ2_base]
     ) -> Point2D[bls12_381_FQ2_base]:
         return bls12_381_base.add(p1, p2)
 
     @staticmethod
+    @Counter
     def multiply(p: Point2D[bls12_381_FQ_base], n: FElt) -> Point2D[bls12_381_FQ_base]:
         return bls12_381_base.multiply(p, n.n)
 
     @staticmethod
+    @Counter
     def multiply_G_2(
         p: Point2D[bls12_381_FQ2_base], n: FElt
     ) -> Point2D[bls12_381_FQ2_base]:
@@ -121,6 +131,7 @@ class bls12_381_pairing(Pairing):
         return None
 
     @staticmethod
+    @Counter
     def pairing(
         p: Point2D[bls12_381_FQ_base], q: Point2D[bls12_381_FQ2_base]
     ) -> bls12_381_FQ12_base:

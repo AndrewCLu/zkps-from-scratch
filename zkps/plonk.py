@@ -41,9 +41,9 @@ class PlonkProver(Generic[FElt]):
         field_class: Type[FElt],
     ) -> None:
         if not constraints.is_valid_constraint():
-            raise Exception("Constraints must be valid!")
+            raise ValueError("Constraints must be valid!")
         if not field_class.field_modulus > 3 * constraints.n:
-            raise Exception(
+            raise ValueError(
                 "Field size must be greater than total number of wire variables!"
             )
 
@@ -55,11 +55,11 @@ class PlonkProver(Generic[FElt]):
 
     def prove(self, witness: List[FElt], public_inputs: List[FElt]) -> PlonkProof[FElt]:
         if len(witness) != self.constraints.m:
-            raise Exception(
+            raise ValueError(
                 "Must have witness length equal to number of unique wires in constraints!"
             )
         if len(public_inputs) != self.constraints.l:
-            raise Exception(
+            raise ValueError(
                 "Must have public input length equal to number of public inputs in constraints!"
             )
 
@@ -189,7 +189,7 @@ class PlonkProver(Generic[FElt]):
         ) / Z_S
         # If prover is honest Z_S divides cleanly
         if T_rem != Polynomial[FElt](coeffs=[self.field_class.zero()]):
-            raise Exception(
+            raise AssertionError(
                 "Unable to compute T polynomial: Z_S does not divide evenly!"
             )
         T_cm = self.pcs_prover.commit(T)

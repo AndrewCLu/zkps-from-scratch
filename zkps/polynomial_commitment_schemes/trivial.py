@@ -41,7 +41,9 @@ class TrivialProver(PCSProver, Generic[FElt]):
         self, f: Polynomial[FElt], cm: Commitment, z: FElt, s: FElt, op_info: Any
     ) -> TrivialOpening:
         if not isinstance(cm, TrivialCommitment):
-            raise Exception("Wrong commitment used. Must provide a trivial commitment.")
+            raise ValueError(
+                "Wrong commitment used. Must provide a trivial commitment."
+            )
         return TrivialOpening(value=None)
 
     def batch_open_at_point(
@@ -54,7 +56,7 @@ class TrivialProver(PCSProver, Generic[FElt]):
     ) -> Opening:
         batch_size = len(fs)
         if len(cms) != batch_size or len(ss) != batch_size:
-            raise Exception("All parameters must have length equal to batch size!")
+            raise ValueError("All parameters must have length equal to batch size!")
 
         return TrivialOpening(value=None)
 
@@ -64,9 +66,11 @@ class TrivialVerifier(PCSVerifier, Generic[FElt]):
         self, op: Opening, cm: Commitment, z: FElt, s: FElt, op_info: Any
     ) -> bool:
         if not isinstance(op, TrivialOpening):
-            raise Exception("Wrong opening used. Must provide a trivial opening.")
+            raise ValueError("Wrong opening used. Must provide a trivial opening.")
         if not isinstance(cm, TrivialCommitment):
-            raise Exception("Wrong commitment used. Must provide a trivial commitment.")
+            raise ValueError(
+                "Wrong commitment used. Must provide a trivial commitment."
+            )
         coeffs: List[FElt] = cast(TrivialCommitment[FElt], cm).value
         f = Polynomial[FElt](coeffs=coeffs)
         return f(z) == s
@@ -75,15 +79,15 @@ class TrivialVerifier(PCSVerifier, Generic[FElt]):
         self, op: Opening, cms: List[Commitment], z: FElt, ss: List[FElt], op_info: Any
     ) -> bool:
         if not isinstance(op, TrivialOpening):
-            raise Exception("Wrong opening used. Must provide a trivial opening.")
+            raise ValueError("Wrong opening used. Must provide a trivial opening.")
 
         batch_size = len(cms)
         if len(ss) != batch_size:
-            raise Exception("All parameters must have length equal to batch size!")
+            raise ValueError("All parameters must have length equal to batch size!")
 
         for i in range(batch_size):
             if not isinstance(cms[i], TrivialCommitment):
-                raise Exception(
+                raise ValueError(
                     "Wrong commitment used. Must provide a trivial commitment."
                 )
 

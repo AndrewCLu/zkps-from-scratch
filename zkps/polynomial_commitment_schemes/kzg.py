@@ -78,7 +78,7 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
 
     def commit(self, f: Polynomial[FElt]) -> KZGCommitment:
         if len(f.coeffs) > len(self.srs.G_1_elts):
-            raise Exception("Polynomial degree is greater than size of SRS!")
+            raise ValueError("Polynomial degree is greater than size of SRS!")
 
         cm = self.__eval_poly_with_srs(f)
 
@@ -88,11 +88,11 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
         self, f: Polynomial[FElt], cm: Commitment, z: FElt, s: FElt, op_info: Any
     ) -> KZGOpening:
         if not isinstance(cm, KZGCommitment):
-            raise Exception("Wrong commitment used. Must provide a KZG commitment.")
+            raise ValueError("Wrong commitment used. Must provide a KZG commitment.")
 
         quo, rem = (f - s) / Polynomial[FElt](coeffs=[-z, self.field_class.one()])
         if rem != Polynomial[FElt](coeffs=[self.field_class.zero()]):
-            raise Exception("Opening is not valid: f(z) != s")
+            raise ValueError("Opening is not valid: f(z) != s")
         op = self.__eval_poly_with_srs(quo)
 
         return KZGOpening(value=op)
@@ -107,27 +107,29 @@ class KZGProver(PCSProver, Generic[FElt, BaseField, G2Field, GtField]):
     ) -> Opening:
         batch_size = len(fs)
         if len(cms) != batch_size or len(ss) != batch_size:
-            raise Exception("All parameters must have length equal to batch size!")
+            raise ValueError("All parameters must have length equal to batch size!")
 
         if not isinstance(op_info, self.field_class):
-            raise Exception("op_info must be of type FElt!")
+            raise ValueError("op_info must be of type FElt!")
 
-        sum = Polynomial[FElt](coeffs=[self.field_class.zero()])
+        res = Polynomial[FElt](coeffs=[self.field_class.zero()])
         scalar = self.field_class.one()
         for i in range(batch_size):
             if not isinstance(cms[i], KZGCommitment):
-                raise Exception("Wrong commitment used. Must provide a KZG commitment.")
+                raise ValueError(
+                    "Wrong commitment used. Must provide a KZG commitment."
+                )
 
             quo, rem = (fs[i] - ss[i]) / Polynomial[FElt](
                 coeffs=[-z, self.field_class.one()]
             )
             if rem != Polynomial[FElt](coeffs=[self.field_class.zero()]):
-                raise Exception("Opening is not valid: f(z) != s")
+                raise ValueError("Opening is not valid: f(z) != s")
 
-            sum += quo * scalar
+            res += quo * scalar
             scalar *= op_info
 
-        op = self.__eval_poly_with_srs(sum)
+        op = self.__eval_poly_with_srs(res)
 
         return KZGOpening(value=op)
 
@@ -147,9 +149,9 @@ class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
         self, op: Opening, cm: Commitment, z: FElt, s: FElt, op_info: Any
     ) -> bool:
         if not isinstance(op, KZGOpening):
-            raise Exception("Wrong opening used. Must provide a KZG opening.")
+            raise ValueError("Wrong opening used. Must provide a KZG opening.")
         if not isinstance(cm, KZGCommitment):
-            raise Exception("Wrong commitment used. Must provide a KZG commitment.")
+            raise ValueError("Wrong commitment used. Must provide a KZG commitment.")
 
         lhs = self.pairing.pairing(
             op.value,
@@ -168,18 +170,20 @@ class KZGVerifier(PCSVerifier, Generic[FElt, BaseField, G2Field, GtField]):
         self, op: Opening, cms: List[Commitment], z: FElt, ss: List[FElt], op_info: Any
     ) -> bool:
         if not isinstance(op, KZGOpening):
-            raise Exception("Wrong opening used. Must provide a KZG opening.")
+            raise ValueError("Wrong opening used. Must provide a KZG opening.")
 
         if not isinstance(op_info, self.field_class):
-            raise Exception("op_info must be of type FElt!")
+            raise ValueError("op_info must be of type FElt!")
 
         batch_size = len(cms)
         if len(ss) != batch_size:
-            raise Exception("All parameters must have length equal to batch size!")
+            raise ValueError("All parameters must have length equal to batch size!")
 
         for i in range(batch_size):
             if not isinstance(cms[i], KZGCommitment):
-                raise Exception("Wrong commitment used. Must provide a KZG commitment.")
+                raise ValueError(
+                    "Wrong commitment used. Must provide a KZG commitment."
+                )
 
         cm_sum = None  # Pairing identity point
         v_sum = self.field_class.zero()

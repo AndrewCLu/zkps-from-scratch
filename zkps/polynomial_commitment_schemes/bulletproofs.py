@@ -1,8 +1,15 @@
-from typing import Generic, List, Type, Tuple, Any, Union, overload
+from typing import Generic, List, Type, Any
 from dataclasses import dataclass
 from algebra.field import FElt
 from algebra.cyclic_group import CyclicGroupElt
 from algebra.polynomial import Polynomial
+from algebra.algorithms import (
+    multi_scalar_multiplication,
+    scalar_dot_product,
+    split_vec,
+    add_vec,
+    scale_vec,
+)
 from polynomial_commitment_schemes.pcs import (
     Commitment,
     Opening,
@@ -71,79 +78,6 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         self.cyclic_group_class: Type[CyclicGroupElt] = cyclic_group_class
         self.r: FElt = self.field_class(1234)  # Fix randomness for consistent testing
 
-    # TODO: Better algorithms for MSM
-    # TODO: Move MSM into utils
-    def __multiScalarMultiplication(
-        self, scalars: List[FElt], groupElts: List[CyclicGroupElt]
-    ) -> CyclicGroupElt:
-        if len(scalars) != len(groupElts):
-            raise Exception(
-                "Length of scalars must be the same as those of group elements!"
-            )
-
-        res = self.cyclic_group_class.identity()
-        for i in range(len(scalars)):
-            res += groupElts[i] * scalars[i]
-
-        return res
-
-    # TODO: Move into utils
-    def __scalarDotProduct(self, a: List[FElt], b: List[FElt]) -> FElt:
-        if len(a) != len(b):
-            raise Exception("Length of both scalar vectors must be the same!")
-
-        res = self.field_class.zero()
-        for i in range(len(a)):
-            res += a[i] * b[i]
-
-        return res
-
-    def __split_lo_hi(self, vec: List[Any]) -> Tuple[List[Any], List[Any]]:
-        if len(vec) % 2 != 0:
-            raise Exception("Cannot split vector of odd length!")
-        return (vec[: len(vec) // 2], vec[len(vec) // 2 :])
-
-    @overload
-    def __scale_vec(self, vec: List[FElt], scalar: FElt) -> List[FElt]:
-        ...
-
-    @overload
-    def __scale_vec(
-        self, vec: List[CyclicGroupElt], scalar: FElt
-    ) -> List[CyclicGroupElt]:
-        ...
-
-    def __scale_vec(
-        self, vec: Union[List[FElt], List[CyclicGroupElt]], scalar: FElt
-    ) -> Union[List[FElt], List[CyclicGroupElt]]:
-        res = []
-        for i in range(len(vec)):
-            res.append(vec[i] * scalar)
-
-        return res
-
-    @overload
-    def __add_vec(self, a: List[FElt], b: List[FElt]) -> List[FElt]:
-        ...
-
-    @overload
-    def __add_vec(
-        self, a: List[CyclicGroupElt], b: List[CyclicGroupElt]
-    ) -> List[CyclicGroupElt]:
-        ...
-
-    # TODO: Can have better type annotations for return value
-    def __add_vec(
-        self,
-        a: Union[List[FElt], List[CyclicGroupElt]],
-        b: Union[List[FElt], List[CyclicGroupElt]],
-    ) -> List[Any]:
-        res = []
-        for i in range(len(a)):
-            res.append(a[i] + b[i])
-
-        return res
-
     def commit(self, f: Polynomial[FElt]) -> Commitment:
         a_vec: List[FElt] = f.coeffs
 
@@ -153,7 +87,7 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
 
         randomness = self.crs.H * self.r
         return BulletproofsCommitment(
-            value=self.__multiScalarMultiplication(
+            value=multi_scalar_multiplication(
                 scalars=a_vec, groupElts=self.crs.G_elts[:d]
             )
             + randomness
@@ -163,7 +97,7 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         self, f: Polynomial[FElt], cm: Commitment, z: FElt, s: FElt, op_info: Any
     ) -> Opening:
         if not isinstance(cm, BulletproofsCommitment):
-            raise Exception(
+            raise ValueError(
                 "Must provide Bulletproofs commitment to Bulletproofs prover!"
             )
 
@@ -192,21 +126,21 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
         R_js = []
         r_prime = self.r
         for _ in range(k):
-            a_lo, a_hi = self.__split_lo_hi(a_vec)
-            b_lo, b_hi = self.__split_lo_hi(b_vec)
-            g_lo, g_hi = self.__split_lo_hi(g_vec)
+            a_lo, a_hi = split_vec(a_vec)
+            b_lo, b_hi = split_vec(b_vec)
+            g_lo, g_hi = split_vec(g_vec)
 
             l_j = transcript.get_hash(salt=bytes(1))
             r_j = transcript.get_hash(salt=bytes(2))
             L_j = (
-                self.__multiScalarMultiplication(scalars=a_lo, groupElts=g_hi)
+                multi_scalar_multiplication(scalars=a_lo, groupElts=g_hi)
                 + self.crs.H * l_j
-                + U * self.__scalarDotProduct(a=a_lo, b=b_hi)
+                + U * scalar_dot_product(aa=a_lo, bb=b_hi)
             )
             R_j = (
-                self.__multiScalarMultiplication(scalars=a_hi, groupElts=g_lo)
+                multi_scalar_multiplication(scalars=a_hi, groupElts=g_lo)
                 + self.crs.H * r_j
-                + U * self.__scalarDotProduct(a=a_hi, b=b_lo)
+                + U * scalar_dot_product(aa=a_hi, bb=b_lo)
             )
             L_js.append(L_j)
             R_js.append(R_j)
@@ -215,21 +149,15 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
 
             u_j = transcript.get_hash()
             u_j_inv = self.field_class.one() / u_j
-            a_vec = self.__add_vec(
-                self.__scale_vec(a_hi, u_j_inv), self.__scale_vec(a_lo, u_j)
-            )
-            b_vec = self.__add_vec(
-                self.__scale_vec(b_lo, u_j_inv), self.__scale_vec(b_hi, u_j)
-            )
-            g_vec = self.__add_vec(
-                self.__scale_vec(g_lo, u_j_inv), self.__scale_vec(g_hi, u_j)
-            )
+            a_vec = add_vec(scale_vec(a_hi, u_j_inv), scale_vec(a_lo, u_j))
+            b_vec = add_vec(scale_vec(b_lo, u_j_inv), scale_vec(b_hi, u_j))
+            g_vec = add_vec(scale_vec(g_lo, u_j_inv), scale_vec(g_hi, u_j))
             r_prime += l_j * u_j * u_j + r_j * u_j_inv * u_j_inv
 
         # ---------- Run Schnorr protocol ----------
 
         if len(a_vec) != 1 or len(b_vec) != 1 or len(g_vec) != 1:
-            raise Exception("Failed to compute final values of a, b, g!")
+            raise AssertionError("Failed to compute final values of a, b, g!")
         a = a_vec[0]
         b = b_vec[0]
         g = g_vec[0]
@@ -262,12 +190,12 @@ class BulletproofsProver(PCSProver, Generic[FElt, CyclicGroupElt]):
     ) -> Opening:
         batch_size = len(fs)
         if len(cms) != batch_size or len(ss) != batch_size:
-            raise Exception("All parameters must have length equal to batch size!")
+            raise ValueError("All parameters must have length equal to batch size!")
 
         batch_ops = []
         for i in range(batch_size):
             if not isinstance(cms[i], BulletproofsCommitment):
-                raise Exception(
+                raise ValueError(
                     "Wrong commitment used. Must provide a Bulletproofs commitment."
                 )
 
@@ -288,42 +216,15 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
         self.field_class: Type[FElt] = field_class
         self.cyclic_group_class: Type[CyclicGroupElt] = cyclic_group_class
 
-    # TODO: Better algorithms for MSM
-    # TODO: Move MSM into utils
-    def __multiScalarMultiplication(
-        self, scalars: List[FElt], groupElts: List[CyclicGroupElt]
-    ) -> CyclicGroupElt:
-        if len(scalars) != len(groupElts):
-            raise Exception(
-                "Length of scalars must be the same as those of group elements!"
-            )
-
-        res = self.cyclic_group_class.identity()
-        for i in range(len(scalars)):
-            res += groupElts[i] * scalars[i]
-
-        return res
-
-    # TODO: Move into utils
-    def __scalarDotProduct(self, a: List[FElt], b: List[FElt]) -> FElt:
-        if len(a) != len(b):
-            raise Exception("Length of both scalar vectors must be the same!")
-
-        res = self.field_class.zero()
-        for i in range(len(a)):
-            res += a[i] * b[i]
-
-        return res
-
     def verify_opening(
         self, op: Opening, cm: Commitment, z: FElt, s: FElt, op_info: Any
     ) -> bool:
         if not isinstance(op, BulletproofsOpening):
-            raise Exception(
+            raise ValueError(
                 "Must provide Bulletproofs opening to Bulletproofs verifier!"
             )
         if not isinstance(cm, BulletproofsCommitment):
-            raise Exception(
+            raise ValueError(
                 "Must provide Bulletproofs commitment to Bulletproofs verifier!"
             )
 
@@ -373,8 +274,8 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
                     prod *= u_js[j]
                 ind //= 2
             s_vec.append(prod)
-        g = self.__multiScalarMultiplication(scalars=s_vec, groupElts=g_vec)
-        b = self.__scalarDotProduct(a=s_vec, b=b_vec)
+        g = multi_scalar_multiplication(scalars=s_vec, groupElts=g_vec)
+        b = scalar_dot_product(aa=s_vec, bb=b_vec)
 
         # ---------- Verify Schnorr proof using randomness from transcript ----------
 
@@ -391,17 +292,17 @@ class BulletproofsVerifier(PCSVerifier, Generic[FElt, CyclicGroupElt]):
         self, op: Opening, cms: List[Commitment], z: FElt, ss: List[FElt], op_info: Any
     ) -> bool:
         if not isinstance(op, BulletproofsBatchOpening):
-            raise Exception(
+            raise ValueError(
                 "Wrong opening used. Must provide a Bulletproofs Batch opening."
             )
 
         batch_size = len(cms)
         if len(ss) != batch_size:
-            raise Exception("All parameters must have length equal to batch size!")
+            raise ValueError("All parameters must have length equal to batch size!")
 
         for i in range(batch_size):
             if not isinstance(cms[i], BulletproofsCommitment):
-                raise Exception(
+                raise ValueError(
                     "Wrong commitment used. Must provide a Bulletproofs commitment."
                 )
 

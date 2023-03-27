@@ -26,7 +26,7 @@ class bn128_FR(FQ, Byteable):
             prod *= root
 
         if prod != cls.one():
-            raise RuntimeError("Failed to compute valid roots of unity!")
+            raise AssertionError("Failed to compute valid roots of unity!")
 
         return res
 
@@ -56,7 +56,7 @@ class bls12_381_FR(FQ, Byteable):
             prod *= root
 
         if prod != cls.one():
-            raise RuntimeError("Failed to compute valid roots of unity!")
+            raise AssertionError("Failed to compute valid roots of unity!")
 
         return res
 
