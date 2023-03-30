@@ -1,4 +1,5 @@
 from collections import defaultdict
+import functools
 
 
 class Counter:
@@ -6,10 +7,16 @@ class Counter:
 
     def __init__(self, func):
         self.func = func
+        functools.update_wrapper(self, func)
 
     def __call__(self, *args, **kwargs):
-        Counter.call_count[self.func.__name__] += 1
+        Counter.call_count[self.func.__qualname__] += 1
         return self.func(*args, **kwargs)
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        return functools.partial(self, instance)
 
     @classmethod
     def display(cls):

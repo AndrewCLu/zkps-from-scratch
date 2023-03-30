@@ -1,6 +1,7 @@
 from typing import Generic, List, Type, Union, Tuple
 from copy import deepcopy
 from dataclasses import dataclass
+from itertools import zip_longest
 from algebra.field import FElt
 from metrics import Counter
 
@@ -9,25 +10,22 @@ from metrics import Counter
 class Polynomial(Generic[FElt]):
     coeffs: List[FElt]
 
+    @Counter
     def __add__(self, other: "Polynomial") -> "Polynomial":
-        longer, shorter = self.coeffs, other.coeffs
-        if len(self.coeffs) < len(other.coeffs):
-            longer, shorter = other.coeffs, self.coeffs
-
-        new_coeffs: List[FElt] = []
-        for i in range(len(shorter)):
-            new_coeffs.append(longer[i] + shorter[i])
-        for i in range(len(shorter), len(longer)):
-            new_coeffs.append(longer[i])
+        new_coeffs = [
+            a + b
+            for a, b in zip_longest(
+                self.coeffs, other.coeffs, fillvalue=self.coeffs[0].zero()
+            )
+        ]
 
         # Truncate leading zeros
-        while (
-            len(new_coeffs) > 1 and new_coeffs[-1] == self.coeffs[0].zero()
-        ):  ## Fix these class method calls
+        while len(new_coeffs) > 1 and new_coeffs[-1] == self.coeffs[0].zero():
             new_coeffs.pop()
 
         return Polynomial[FElt](new_coeffs)
 
+    @Counter
     def __sub__(self, other: Union[FElt, "Polynomial"]) -> "Polynomial":
         if isinstance(other, Polynomial):
             new_coeffs: List[FElt] = []
@@ -54,24 +52,26 @@ class Polynomial(Generic[FElt]):
             return Polynomial[FElt](new_coeffs)
 
     # TODO: FFT
+    @Counter
     def __mul__(self, other: Union[FElt, "Polynomial"]) -> "Polynomial":
         new_coeffs: List[FElt] = []
         if isinstance(other, Polynomial):
-            for i in range(len(self.coeffs)):
-                for j in range(len(other.coeffs)):
+            for i, self_coeff in enumerate(self.coeffs):
+                for j, other_coeff in enumerate(other.coeffs):
                     index = i + j
-                    prod = self.coeffs[i] * other.coeffs[j]
+                    prod = self_coeff * other_coeff
                     if index >= len(new_coeffs):
                         new_coeffs.append(prod)
                     else:
                         new_coeffs[index] += prod
         else:
-            for i in range(len(self.coeffs)):
-                new_coeffs.append(other * self.coeffs[i])
+            for coeff in self.coeffs:
+                new_coeffs.append(other * coeff)
 
         return Polynomial[FElt](new_coeffs)
 
     # Returns (quotient, remainder) after division by other
+    @Counter
     def __truediv__(
         self, other: Union[FElt, "Polynomial"]
     ) -> Tuple["Polynomial", "Polynomial"]:
@@ -82,14 +82,12 @@ class Polynomial(Generic[FElt]):
                 return (
                     Polynomial[FElt]([self.coeffs[0].zero()]),
                     Polynomial[FElt](num_coeffs),
-                )  # TODO: Fix these class method calls
+                )
             quo_coeffs: List[FElt] = []
-            zero: FElt = self.coeffs[0].zero()  # TODO: Fix these class method calls
+            zero: FElt = self.coeffs[0].zero()
             while len(num_coeffs) >= len(den_coeffs):
                 if num_coeffs[-1] == zero:
-                    quo_coeffs.insert(
-                        0, self.coeffs[0].zero()
-                    )  # TODO: Fix these class method calls
+                    quo_coeffs.insert(0, self.coeffs[0].zero())
                     num_coeffs.pop()
                 else:
                     quo = num_coeffs[-1] / den_coeffs[-1]
@@ -98,47 +96,42 @@ class Polynomial(Generic[FElt]):
                         num_coeffs[-(1 + i)] -= quo * den_coeffs[-(1 + i)]
                     num_coeffs.pop()
             # Truncate leading zeros
-            while (
-                len(num_coeffs) > 1 and num_coeffs[-1] == self.coeffs[0].zero()
-            ):  ## Fix these class method calls
+            while len(num_coeffs) > 1 and num_coeffs[-1] == self.coeffs[0].zero():
                 num_coeffs.pop()
             return (Polynomial[FElt](quo_coeffs), Polynomial[FElt](num_coeffs))
         else:
             new_coeffs: List[FElt] = []
-            for i in range(len(self.coeffs)):
-                new_coeffs.append(self.coeffs[i] / other)
+            for coeff in self.coeffs:
+                new_coeffs.append(coeff / other)
             return (
                 Polynomial[FElt](new_coeffs),
                 Polynomial[FElt]([self.coeffs[0].zero()]),
-            )  # TODO: Fix these class method calls
+            )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Polynomial):
             return False
         if len(self.coeffs) != len(other.coeffs):
             return False
-        for i in range(len(self.coeffs)):
-            if self.coeffs[i] != other.coeffs[i]:
+        for i, coeff in enumerate(self.coeffs):
+            if coeff != other.coeffs[i]:
                 return False
 
         return True
 
+    @Counter
     def __call__(self, x: FElt) -> FElt:
         res = x.zero()
         xs = x.one()
-        for i in range(len(self.coeffs)):
-            res += xs * self.coeffs[i]
+        for coeff in self.coeffs:
+            res += xs * coeff
             xs *= x
 
         return res
 
     # TODO: FFT
     def eval_on_mult_subgroup(self, mult_subgroup: List[FElt]) -> List[FElt]:
-        res = []
-        for i in range(len(mult_subgroup)):
-            res.append(self.__call__(mult_subgroup[i]))
-
-        return res
+        return [self(x) for x in mult_subgroup]
 
     # TODO: IFFT
     @staticmethod
@@ -169,10 +162,10 @@ class Polynomial(Generic[FElt]):
         prod = Polynomial[FElt]([field_class.one()])
         divisor = field_class.one()
 
-        for i in range(len(domain)):
+        for i, value in enumerate(domain):
             if i != index:
-                prod *= Polynomial[FElt](coeffs=[-domain[i], field_class.one()])
-                divisor *= domain[index] - domain[i]
+                prod *= Polynomial[FElt](coeffs=[-value, field_class.one()])
+                divisor *= domain[index] - value
 
         quo, rem = prod / divisor
         if rem != Polynomial[FElt](coeffs=[field_class.zero()]):

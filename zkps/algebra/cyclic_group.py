@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from py_ecc.fields.field_elements import FQ
 from algebra.field import bn128_FR, bls12_381_FR
 from utils import unsigned_int_to_bytes
+from metrics import Counter
 
 
 class CyclicGroup(ABC):
@@ -42,11 +43,13 @@ class bn128_group(CyclicGroup):
     value: int
     order: int = bn128_FR.field_modulus
 
+    @Counter
     def __add__(self, other: "CyclicGroup") -> "bn128_group":
         if not isinstance(other, bn128_group):
             raise ValueError("Can only add bn128_group elements!")
         return bn128_group((self.value + other.value) % self.order)
 
+    @Counter
     def __mul__(self, other: Union[int, FQ]) -> "bn128_group":
         if isinstance(other, int):
             return bn128_group((self.value * other) % self.order)
@@ -79,11 +82,13 @@ class bls12_381_group(CyclicGroup):
     value: int
     order: int = bls12_381_FR.field_modulus
 
+    @Counter
     def __add__(self, other: "CyclicGroup") -> "bls12_381_group":
         if not isinstance(other, bls12_381_group):
             raise ValueError("Can only add bls12_381_group elements!")
         return bls12_381_group((self.value + other.value) % self.order)
 
+    @Counter
     def __mul__(self, other: Union[int, FQ]) -> "bls12_381_group":
         if isinstance(other, int):
             return bls12_381_group((self.value * other) % self.order)
